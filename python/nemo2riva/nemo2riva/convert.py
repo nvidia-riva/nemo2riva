@@ -32,8 +32,17 @@ def Nemo2Riva(args):
         ejrvs_out = nemo_in
 
     logging.info("Restoring NeMo model from '{}'".format(nemo_in))
-    # Restore instance from .nemo file using generic model restore_from
-    model = ModelPT.restore_from(restore_path=nemo_in)
+    try:
+        # Restore instance from .nemo file using generic model restore_from
+        model = ModelPT.restore_from(restore_path=nemo_in)
+    except Exception as e:
+        logging.error(
+            "Nemo2Jarvis: Failed to restore model from NeMo file : {}. Please make sure you have the latest NeMo package installed with [all] dependencies.".format(
+                nemo_in
+            )
+        )
+        raise e
+
     logging.info("Model {} restored from '{}'".format(model.cfg.target, nemo_in))
 
     cfg = get_export_config(model, args)
@@ -96,4 +105,4 @@ def Nemo2Riva(args):
     logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, ejrvs_out))
 
     if args.validate:
-        validate_archive(save_path, schema=cfg.validation_schema)
+        validate_archive(ejrvs_out, schema=cfg.validation_schema)

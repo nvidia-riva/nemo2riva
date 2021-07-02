@@ -1,7 +1,7 @@
 
 # Define required metadata fields expeced in the archive (optional).
 metadata:
-  - obj_cls: nemo.collections.nlp.models.TextClassificationModel
+  - obj_cls: nemo.collections.tts.models.HifiGanModel
   - encryption: True
   - min_nemo_version: 1.1 
 
@@ -9,8 +9,9 @@ metadata:
 file_properties: 
   # List of files.
   - model_config.yaml
-  - model_weights.ckpt:
+  - model_graph.onnx:
       # Dictionary of expected properties (name:value) (optional).
+      onnx: True
       encrypted: True
 
 # Define list of files with expected content (optional).
@@ -20,9 +21,3 @@ file_content:
   - model_config.yaml:
     # List of sections.subsections. ... that are required.
     # (Optional `: True` instructs to check the presence of the file in indicated as leaf in the archive)
-    - class_labels.class_labels_file: True
-    - tokenizer.vocab_file: True
-    - tokenizer.tokenizer_model # NULL!
-    - language_model.pretrained_model_name # make sure the name is set...
-    - language_model.config_file: True # ... and there is a config file
-    - language_model.lm_checkpoint # NULL!

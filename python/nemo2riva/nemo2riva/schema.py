@@ -12,10 +12,12 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
-from omegaconf import OmegaConf
-
 from eff.cookbooks import NeMoCookbook, ONNXCookbook
 from eff.core import Archive
+from omegaconf import OmegaConf
+from packaging import version
+
+from nemo.package_info import __version__ as nemo_version
 
 schema_dict = None
 
@@ -125,6 +127,7 @@ def get_export_config(model, args):
     #
     if schema is None and key in schema_dict:
         schema = schema_dict[key]
+        logging.info("Found validation schema for {} at {}".format(key, schema))
 
     if schema is not None:
         export_obj = get_export_format(schema)
@@ -149,16 +152,45 @@ def get_export_config(model, args):
 
     conf.validation_schema = schema
     conf.args = args
+    check_nemo_version(conf)
 
     return conf
 
 
-# Validate using the schema.
+def check_nemo_version(conf):
+    """
+       Check if installed NeMo version is sufficient to restore/export model.
+    """
+    if conf.validation_schema is not None:
+        schema = OmegaConf.load(conf.validation_schema)
+        key = ''
+        min_nemo_version = None
+
+        for meta in schema.metadata:
+            if 'min_nemo_version' in meta.keys():
+                min_nemo_version = meta['min_nemo_version']
+
+        if min_nemo_version is not None:
+            if version.parse(str(min_nemo_version)) > version.parse(nemo_version):
+                msg = "This model requires NeMo version >= {}, you have {} installed. Please install NeMo >= {}.".format(
+                    min_nemo_version, nemo_version, min_nemo_version
+                )
+                if conf.args.validate:
+                    logging.error(msg)
+                else:
+                    logging.warning(msg)
+            else:
+                logging.info("Checking installed NeMo version ... {} OK".format(nemo_version))
+
+
 def validate_archive(save_path, schema):
+    """
+    Validate EFF archive at save_path using the schema.
+    """
     if schema is None:
         logging.error("-validate option used, but no --schema and no default schema found!")
 
     if Archive.schema_validate_archive(archive_path=save_path, schema_path=schema):
-        logging.info("Exported model at {save_path} is compliant with Riva, using schema at {schema}")
+        logging.info(f"Exported model at {save_path} is compliant with Riva, using schema at {schema}")
     else:
-        logging.error("Exported model at {save_path} failed Riva compliance, using schema at {schema} !")
+        logging.error(f"Exported model at {save_path} failed Riva compliance, using schema at {schema} !")

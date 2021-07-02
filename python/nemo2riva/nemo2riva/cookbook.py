@@ -1,9 +1,11 @@
+import logging
 import os
+import sys
 
 import torch
-
 from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
-from nemo.core import ModelPT
+
+from nemo.core import Exportable, ModelPT
 
 
 class Nemo2RivaCookbook(Cookbook):
@@ -63,7 +65,19 @@ class Nemo2RivaCookbook(Cookbook):
                 )
 
                 # Export the model, get the descriptions.
-                _, descriptions = obj.export(model_graph, check_trace=cfg.args.runtime_check)
+                if not issubclass(obj, Exportable):
+                    logging.error("Nemo2Jarvis: Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
+                    sys.exit(1)
+
+                try:
+                    _, descriptions = obj.export(model_graph, check_trace=cfg.args.runtime_check)
+                except Exception as e:
+                    logging.error(
+                        "Nemo2Jarvis: Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
+                            obj.cfg.target
+                        )
+                    )
+                    raise e
 
                 # Overwrite the file description.
                 effa.add_file_properties(name=cfg.export_file, force=True, description=descriptions[0])

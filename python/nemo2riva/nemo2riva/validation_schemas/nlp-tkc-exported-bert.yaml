@@ -3,6 +3,7 @@
 metadata:
   - obj_cls: nemo.collections.nlp.models.TokenClassificationModel
   - encryption: True
+  - min_nemo_version: 1.1 
 
 # Define list of files that are expected (optional).
 file_properties: 
