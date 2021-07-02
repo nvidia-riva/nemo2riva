@@ -65,7 +65,7 @@ class Nemo2RivaCookbook(Cookbook):
                 )
 
                 # Export the model, get the descriptions.
-                if not issubclass(obj, Exportable):
+                if not isinstance(obj, Exportable):
                     logging.error("Nemo2Jarvis: Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
                     sys.exit(1)
 
