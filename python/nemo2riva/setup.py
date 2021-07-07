@@ -94,6 +94,7 @@ setup(
     author="NVIDIA",
     author_email="nvidia.com",
     version="1.3.0-beta.rc2",
+    setup_requires="nvidia-pyindex",
     install_requires=install_requirements,
     packages=packages,
     name="nemo2riva",
