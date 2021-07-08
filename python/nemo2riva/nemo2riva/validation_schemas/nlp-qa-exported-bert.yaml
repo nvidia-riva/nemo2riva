@@ -1,0 +1,25 @@
+
+# Define required metadata fields expeced in the archive (optional).
+metadata:
+  - obj_cls: nemo.collections.nlp.models.QAModel
+  - encryption: True
+
+# Define list of files that are expected (optional).
+file_properties: 
+  # List of files.
+  - model_config.yaml
+  - model_weights.ckpt:
+      # Dictionary of expected properties (name:value) (optional).
+      encrypted: True
+
+# Define list of files with expected content (optional).
+# Functionality limited to yaml files (e.g. model_config.yaml).
+file_content:
+  # List of files.
+  - model_config.yaml:
+    # List of sections.subsections. ... that are required.
+    # (Optional `: True` instructs to check the presence of the file in indicated as leaf in the archive)
+    - tokenizer.vocab_file: True
+    - language_model.pretrained_model_name # make sure the name is set...
+    - language_model.config_file: True # ... and there is a config file
+    - language_model.lm_checkpoint # NULL!
