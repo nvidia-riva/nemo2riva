@@ -1,3 +1,3 @@
 # riva-api
 
-See latest documentation at http://docs.jarvis-ai.nvidia.com/main.
+See latest documentation at http://docs.riva-ai.nvidia.com/main.
