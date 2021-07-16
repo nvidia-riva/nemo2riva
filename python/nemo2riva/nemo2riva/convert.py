@@ -24,12 +24,12 @@ from nemo.utils import model_utils
 
 
 def Nemo2Riva(args):
-    """Convert a .nemo saved model into .ejrvs Riva input format."""
+    """Convert a .nemo saved model into .riva Riva input format."""
     nemo_in = args.source
-    ejrvs_out = args.out
+    riva_out = args.out
 
-    if ejrvs_out is None:
-        ejrvs_out = nemo_in
+    if riva_out is None:
+        riva_out = nemo_in
 
     logging.info("Restoring NeMo model from '{}'".format(nemo_in))
     try:
@@ -48,7 +48,7 @@ def Nemo2Riva(args):
     cfg = get_export_config(model, args)
 
     # Change postfix.
-    ejrvs_out = os.path.splitext(ejrvs_out)[0] + ".ejrvs"
+    riva_out = os.path.splitext(riva_out)[0] + ".riva"
 
     cb = Nemo2RivaCookbook()
 
@@ -67,7 +67,7 @@ def Nemo2Riva(args):
     # Copy artifacts - first retrieve...
     artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=nemo_in, binary=True)
 
-    # TODO Hack to add labels from FastPitch to .ejrvs since that file is not inside the .nemo
+    # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
     # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
     if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):
         logging.info("Adding mapping.txt for FastPitchModel instance to output file")
@@ -94,15 +94,15 @@ def Nemo2Riva(args):
         cb.add_class_file_content(name=k, **v)
 
     logging.info(
-        "{}: converting {} to  {} using {} export format".format(__name__, nemo_in, ejrvs_out, cfg.export_format)
+        "{}: converting {} to  {} using {} export format".format(__name__, nemo_in, riva_out, cfg.export_format)
     )
 
     # Create Archive using the recipe.
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=UserWarning)
-        cb.save(obj=model, save_path=ejrvs_out, cfg=cfg)
+        cb.save(obj=model, save_path=riva_out, cfg=cfg)
 
-    logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, ejrvs_out))
+    logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
 
     if args.validate:
-        validate_archive(ejrvs_out, schema=cfg.validation_schema)
+        validate_archive(riva_out, schema=cfg.validation_schema)

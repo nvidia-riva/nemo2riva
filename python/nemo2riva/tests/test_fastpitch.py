@@ -22,7 +22,7 @@ def test_nemo_with_labels():
     argv = [test_file]
     nemo2riva(argv)
     # In this case, output will not have mapping.txt file
-    with tarfile.open(os.path.join(os.environ["TEST_FILE_PATH"], Path(test_file).stem + ".ejrvs"), "r:gz") as f:
+    with tarfile.open(os.path.join(os.environ["TEST_FILE_PATH"], Path(test_file).stem + ".riva"), "r:gz") as f:
         assert "mapping.txt" not in f.getnames()
 
 
@@ -31,7 +31,7 @@ def test_nemo_with_phonemes():
     argv = [test_file]
     nemo2riva(argv)
     # In this case, output will have mapping.txt file
-    with tarfile.open(os.path.join(os.environ["TEST_FILE_PATH"], Path(test_file).stem + ".ejrvs"), "r:gz") as f:
+    with tarfile.open(os.path.join(os.environ["TEST_FILE_PATH"], Path(test_file).stem + ".riva"), "r:gz") as f:
         assert "mapping.txt" in f.getnames()
 
 

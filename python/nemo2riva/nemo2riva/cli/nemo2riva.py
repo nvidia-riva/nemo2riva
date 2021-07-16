@@ -20,7 +20,7 @@ from nemo2riva.convert import Nemo2Riva
 
 nemo2riva model.nemo
 
-nemo2riva model.nemo --out ../model.ejrvs --format onnx
+nemo2riva model.nemo --out ../model.riva --format onnx
 
 """
 

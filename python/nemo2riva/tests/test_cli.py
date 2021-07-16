@@ -37,10 +37,10 @@ def get_nemo_file():
 @pytest.mark.skip("Only one cookbook per process")
 def test_onnx_with_check():
     with tempfile.TemporaryDirectory() as restore_folder:
-        ejrvs = os.path.join(restore_folder, "test.ejrvs")
-        argv = [get_nemo_file(), "--out", ejrvs, "--runtime-check"]
+        riva = os.path.join(restore_folder, "test.riva")
+        argv = [get_nemo_file(), "--out", riva, "--runtime-check"]
         nemo2riva(argv)
-        with tarfile.open(ejrvs, "r:gz") as tar:
+        with tarfile.open(riva, "r:gz") as tar:
             tar_names = tar.getnames()
             # Everything included in the tarfile
             for expected in onnx_expected_content:
@@ -49,10 +49,10 @@ def test_onnx_with_check():
 
 def test_ts_override():
     with tempfile.TemporaryDirectory() as restore_folder:
-        ejrvs = os.path.join(restore_folder, "ts_test.ejrvs")
-        argv = [get_nemo_file(), "--out", ejrvs, "--format", "ts"]
+        riva = os.path.join(restore_folder, "ts_test.riva")
+        argv = [get_nemo_file(), "--out", riva, "--format", "ts"]
         nemo2riva(argv)
-        with tarfile.open(ejrvs, "r:gz") as tar:
+        with tarfile.open(riva, "r:gz") as tar:
             tar_names = tar.getnames()
             print("contents: ", tar_names)
             # Everything included in the tarfile
