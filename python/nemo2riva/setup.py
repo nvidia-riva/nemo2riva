@@ -14,12 +14,26 @@ from pathlib import Path
 
 from setuptools import Extension, setup
 
+
 install_requirements = ["isort<5.0", "nemo_toolkit>=1.0.0", "nvidia-eff>=0.2.9"]
 
 packages = [
     "nemo2riva",
     "nemo2riva.cli",
 ]
+
+setup_py_dir = Path(__file__).parent.absolute()
+
+
+def get_version():
+    version_file = setup_py_dir / ".." / ".." / "VERSION"
+    versions = open(version_file, "r").readlines()
+    version = "devel"
+    for v in versions:
+        if v.startswith("RIVA_VERSION: "):
+            version = v[len("RIVA_VERSION: ") :].strip()
+    return version
+
 
 ###############################################################################
 #                            Code style checkers                              #
@@ -93,7 +107,7 @@ setup(
     description="NeMo Model => Riva Deployment Converter",
     author="NVIDIA",
     author_email="nvidia.com",
-    version="1.3.0-beta.rc2",
+    version=get_version(),
     setup_requires="nvidia-pyindex",
     install_requires=install_requirements,
     packages=packages,
