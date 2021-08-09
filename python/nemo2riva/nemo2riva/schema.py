@@ -31,7 +31,7 @@ class ExportConfig:
 
     # Export format.
     export_format: str = "ONNX"
-
+    autocast: bool = False
     export_file: str = "model_graph.onnx"
 
     # Encryption option.
@@ -86,7 +86,7 @@ def load_schemas():
 def get_export_format(schema_path):
     # Load the schema.
     schema = OmegaConf.load(schema_path)
-    obj = {'model_graph.onnx': {'onnx': True, 'encrypted': False}}
+    obj = {'model_graph.onnx': {'onnx': True, 'encrypted': False, 'autocast': False}}
 
     for schema_section in schema["file_properties"]:
         try:
@@ -139,6 +139,7 @@ def get_export_config(model, args):
             conf.export_format = "TS"
         else:
             conf.export_format = "CKPT"
+        conf.autocast = export_obj[conf.export_file]['autocast']
         # conf.should_encrypt = export_obj[conf.export_file]['encrypted']
 
     # Optional export format override

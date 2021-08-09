@@ -17,10 +17,10 @@ from typing import Optional
 from nemo2riva.artifacts import retrieve_artifacts_as_dict
 from nemo2riva.cookbook import Nemo2RivaCookbook
 from nemo2riva.schema import get_export_config, validate_archive
+from nemo2riva.patches import patches
 
 # from nemo.core.config import hydra_runner
 from nemo.core import ModelPT
-from nemo.utils import model_utils
 
 
 def Nemo2Riva(args):
@@ -67,27 +67,10 @@ def Nemo2Riva(args):
     # Copy artifacts - first retrieve...
     artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=nemo_in, binary=True)
 
-    # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
-    # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
-    if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):
-        logging.info("Adding mapping.txt for FastPitchModel instance to output file")
-        labels = model.vocab.labels
-        mapping = []
-        for idx, token in enumerate(labels):
-            if not str.islower(token) and str.isalnum(token):
-                # token is ARPABET token, need to be prepended with @
-                token = '@' + token
-            mapping.append("{} {}".format(idx, token))
-        mapping_txt = "\n".join(mapping)
-
-        content = {
-            "description": "mapping file for FastPitch",
-            "conf_path": "./mapping.txt",
-            "path_type": model_utils.ArtifactPathType.TAR_PATH,
-            "nemo_artifact": True,
-            "content": mapping_txt,
-        }
-        artifacts["mapping.txt"] = content
+    # check if this model has one or more patches to apply, if yes go ahead and run it
+    if model.__class__.__name__ in patches:
+        for patch in patches[model.__class__.__name__]:
+            patch(model, artifacts)
 
     # ... and next add to "output" cookbook.
     for k, v in artifacts.items():

@@ -3,6 +3,7 @@ import os
 import sys
 
 import torch
+from contextlib import nullcontext
 from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
 
 from nemo.core import Exportable, ModelPT
@@ -70,7 +71,10 @@ class Nemo2RivaCookbook(Cookbook):
                     sys.exit(1)
 
                 try:
-                    _, descriptions = obj.export(model_graph, check_trace=cfg.args.runtime_check)
+                    autocast = torch.cuda.amp.autocast if cfg.autocast else nullcontext
+                    with autocast():
+                        logging.info(f"Exporting model with autocast={cfg.autocast}")
+                        _, descriptions = obj.export(model_graph, check_trace=cfg.args.runtime_check)
                 except Exception as e:
                     logging.error(
                         "Nemo2Jarvis: Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(

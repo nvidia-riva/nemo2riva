@@ -13,6 +13,7 @@ file_properties:
       # Dictionary of expected properties (name:value) (optional).
       onnx: True
       encrypted: True
+      autocast: True
 
 # Define list of files with expected content (optional).
 # Functionality limited to yaml files (e.g. model_config.yaml).
