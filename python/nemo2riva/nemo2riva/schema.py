@@ -139,7 +139,7 @@ def get_export_config(model, args):
             conf.export_format = "TS"
         else:
             conf.export_format = "CKPT"
-        conf.autocast = export_obj[conf.export_file]['autocast']
+        conf.autocast = export_obj[conf.export_file].get('autocast', False)
         # conf.should_encrypt = export_obj[conf.export_file]['encrypted']
 
     # Optional export format override
