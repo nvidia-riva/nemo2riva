@@ -130,7 +130,12 @@ def get_export_config(model, args):
         schema = schema_dict[key]
         logging.info("Found validation schema for {} at {}".format(key, schema))
 
-    if schema is not None:
+    if schema is None:
+        logging.warning(
+            "Validation schema not found for {}.\n".format(key)
+            + "That means Riva does not yet support a pipeline for this network and likely will not work with it."
+        )
+    else:
         export_obj = get_export_format(schema)
         conf.export_file = list(export_obj)[0]
         if conf.export_file.endswith('.onnx'):

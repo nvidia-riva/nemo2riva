@@ -36,7 +36,8 @@ def nemo2riva(argv=None):
     if args.verbose is not None:
         numeric_level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(numeric_level, int):
-            raise ValueError('Invalid log level: %s' % loglevel)
+            raise ValueError('Invalid log level: %s' % numeric_level)
+
         loglevel = numeric_level
 
     logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ def nemo2riva(argv=None):
         for handler in logger.handlers:
             logger.removeHandler(handler)
     logging.basicConfig(level=loglevel, format='%(asctime)s [%(levelname)s] %(message)s')
+    logging.info("Logging level set to {}".format(loglevel))
 
     Nemo2Riva(args)
 

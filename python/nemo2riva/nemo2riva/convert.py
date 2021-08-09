@@ -16,10 +16,8 @@ from typing import Optional
 
 from nemo2riva.artifacts import retrieve_artifacts_as_dict
 from nemo2riva.cookbook import Nemo2RivaCookbook
-from nemo2riva.schema import get_export_config, validate_archive
 from nemo2riva.patches import patches
-
-# from nemo.core.config import hydra_runner
+from nemo2riva.schema import get_export_config, validate_archive
 from nemo.core import ModelPT
 
 

@@ -14,7 +14,6 @@ from pathlib import Path
 
 from setuptools import Extension, setup
 
-
 install_requirements = ["isort<5.0", "nemo_toolkit>=1.0.0", "nvidia-eff>=0.2.9"]
 
 packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches"]

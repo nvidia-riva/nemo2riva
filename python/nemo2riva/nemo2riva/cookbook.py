@@ -1,9 +1,9 @@
 import logging
 import os
 import sys
+from contextlib import nullcontext
 
 import torch
-from contextlib import nullcontext
 from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
 
 from nemo.core import Exportable, ModelPT
