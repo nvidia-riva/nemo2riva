@@ -116,14 +116,6 @@ def get_export_config(model, args):
     key = get_schema_key(model)
 
     #
-    # Current 'state of that art' of export formats Riva expects is:
-    # ONNX for all models except mon-Megatron NLP models
-    #
-    if key.startswith('nemo.collections.nlp') and not 'megatron' in key:
-        conf.export_format = 'CKPT'
-        conf.export_file = 'model_graph.ckpt'
-
-    #
     # Now check if there is a schema defined for target model class
     #
     if schema is None and key in schema_dict:
