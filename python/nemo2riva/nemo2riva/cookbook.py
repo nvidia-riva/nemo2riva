@@ -2,16 +2,15 @@ import logging
 import os
 import sys
 
+import torch
+from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
+from nemo.core import Exportable, ModelPT
+
 try:
     from contextlib import nullcontext
 except ImportError:
     # handle python < 3.7
     from contextlib import suppress as nullcontext
-
-import torch
-from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
-
-from nemo.core import Exportable, ModelPT
 
 
 class Nemo2RivaCookbook(Cookbook):

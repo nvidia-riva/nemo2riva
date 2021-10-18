@@ -15,10 +15,9 @@ from typing import Optional
 
 from eff.cookbooks import NeMoCookbook, ONNXCookbook
 from eff.core import Archive
+from nemo.package_info import __version__ as nemo_version
 from omegaconf import OmegaConf
 from packaging import version
-
-from nemo.package_info import __version__ as nemo_version
 
 schema_dict = None
 

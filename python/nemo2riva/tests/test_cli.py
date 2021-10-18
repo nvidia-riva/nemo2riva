@@ -14,7 +14,6 @@ import tarfile
 import tempfile
 
 import pytest
-
 from nemo2riva.cli.nemo2riva import nemo2riva
 from nemo.collections.tts.models import HifiGanModel
 from nemo.utils.app_state import AppState

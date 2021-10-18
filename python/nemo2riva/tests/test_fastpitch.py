@@ -13,7 +13,6 @@ import tarfile
 from pathlib import Path
 
 import pytest
-
 from nemo2riva.cli.nemo2riva import nemo2riva
 
 
