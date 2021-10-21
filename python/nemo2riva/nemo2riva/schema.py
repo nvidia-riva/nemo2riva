@@ -13,8 +13,8 @@ import sys
 from dataclasses import dataclass
 from typing import Optional
 
-from eff.cookbooks import NeMoCookbook, ONNXCookbook
 from eff.core import Archive
+from eff.validator import schema_validate_archive
 from nemo.package_info import __version__ as nemo_version
 from omegaconf import OmegaConf
 from packaging import version
@@ -48,12 +48,6 @@ def get_schema_key(model):
         key = '.'.join(keylist[: model_index + 1]) + '.' + keylist[-1]
     except ValueError:
         pass
-    if (
-        key.startswith('nemo.collections.nlp')
-        and hasattr(model.cfg, "language_model")
-        and 'megatron' in model.cfg.language_model.pretrained_model_name
-    ):
-        key = key + "-megatron"
     return key
 
 
@@ -76,8 +70,6 @@ def load_schemas():
         for meta in conf.metadata:
             if 'obj_cls' in meta.keys():
                 key = meta['obj_cls']
-        if 'megatron' in f:
-            key = key + "-megatron"
         schema_dict[key] = f
         print(f"Loaded schema file {f} for {key}")
 
@@ -85,9 +77,9 @@ def load_schemas():
 def get_export_format(schema_path):
     # Load the schema.
     schema = OmegaConf.load(schema_path)
-    obj = {'model_graph.onnx': {'onnx': True, 'encrypted': False, 'autocast': False}}
-
-    for schema_section in schema["file_properties"]:
+    obj = {'model_graph.onnx': {'onnx': True, 'autocast': False}}
+    file_schemas = schema["file_properties"] if "file_properties" in schema else schema["artifact_properties"]
+    for schema_section in file_schemas:
         try:
             if (
                 "model_graph.onnx" in schema_section
@@ -136,7 +128,7 @@ def get_export_config(model, args):
         else:
             conf.export_format = "CKPT"
         conf.autocast = export_obj[conf.export_file].get('autocast', False)
-        # conf.should_encrypt = export_obj[conf.export_file]['encrypted']
+        conf.encryption = export_obj[conf.export_file].get('encryption', None)
 
     # Optional export format override
     if args.format is not None:
@@ -150,6 +142,9 @@ def get_export_config(model, args):
 
     conf.validation_schema = schema
     conf.args = args
+    # save 'normalized' class name
+    conf.cls = key
+
     check_nemo_version(conf)
 
     return conf
@@ -189,10 +184,7 @@ def validate_archive(save_path, schema):
     if schema is None:
         logging.error("--validate option used, but no --schema and no default schema found!")
 
-    logging.warning("EFF file content validation is disabled in this release!")
-    return
-
-    if Archive.schema_validate_archive(archive_path=save_path, schema_path=schema):
+    if schema_validate_archive(archive_path=save_path, schema_path=schema):
         logging.info(f"Exported model at {save_path} is compliant with Riva, using schema at {schema}")
     else:
         logging.error(f"Exported model at {save_path} failed Riva compliance, using schema at {schema} !")

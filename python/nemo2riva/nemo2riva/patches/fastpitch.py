@@ -1,7 +1,5 @@
 import logging
 
-from nemo.utils import model_utils
-
 
 def generate_vocab_mapping(model, artifacts):
     # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
@@ -24,8 +22,7 @@ def generate_vocab_mapping(model, artifacts):
 
         content = {
             "description": "mapping file for FastPitch",
-            "conf_path": "./mapping.txt",
-            "path_type": model_utils.ArtifactPathType.TAR_PATH,
+            "path_type": "TAR_PATH",
             "nemo_artifact": True,
             "content": mapping_txt,
         }

@@ -31,74 +31,6 @@ def get_version():
     return version
 
 
-###############################################################################
-#                            Code style checkers                              #
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-
-
-class StyleCommand(distutils_cmd.Command):
-    __LINE_WIDTH = 119
-    __ISORT_BASE = (
-        "isort "
-        # These two lines makes isort compatible with black.
-        "--multi-line=3 --trailing-comma --force-grid-wrap=0 "
-        f"--use-parentheses --line-width={__LINE_WIDTH} -rc -ws"
-    )
-    __BLACK_BASE = f"black --skip-string-normalization --line-length={__LINE_WIDTH}"
-    description = "Checks overall project code style."
-    user_options = [
-        ("scope=", None, "Folder of file to operate within."),
-        ("fix", None, "True if tries to fix issues in-place."),
-    ]
-
-    def __call_checker(self, base_command, scope, check):
-        command = list(base_command)
-
-        command.append(scope)
-
-        if check:
-            command.extend(["--check", "--diff"])
-
-        self.announce(
-            msg="Running command: %s" % str(" ".join(command)), level=distutils_log.INFO,
-        )
-
-        return_code = subprocess.call(command)
-
-        return return_code
-
-    def _isort(self, scope, check):
-        return self.__call_checker(base_command=self.__ISORT_BASE.split(), scope=scope, check=check,)
-
-    def _black(self, scope, check):
-        return self.__call_checker(base_command=self.__BLACK_BASE.split(), scope=scope, check=check,)
-
-    def _pass(self):
-        self.announce(msg="\033[32mPASS\x1b[0m", level=distutils_log.INFO)
-
-    def _fail(self):
-        self.announce(msg="\033[31mFAIL\x1b[0m", level=distutils_log.INFO)
-
-    # noinspection PyAttributeOutsideInit
-    def initialize_options(self):
-        self.scope = "."
-        self.fix = ""
-
-    def run(self):
-        scope, check = self.scope, not self.fix
-        isort_return = self._isort(scope=scope, check=check)
-        black_return = self._black(scope=scope, check=check)
-
-        if isort_return == 0 and black_return == 0:
-            self._pass()
-        else:
-            self._fail()
-            exit(isort_return if isort_return != 0 else black_return)
-
-    def finalize_options(self):
-        pass
-
-
 setup(
     description="NeMo Model => Riva Deployment Converter",
     author="NVIDIA",
@@ -113,5 +45,4 @@ setup(
     package_dir={"nemo2riva": "nemo2riva"},
     package_data={"nemo2riva": ["validation_schemas/*.yaml"]},
     entry_points={"console_scripts": ["nemo2riva = nemo2riva.cli:nemo2riva",]},
-    cmdclass={"style": StyleCommand},
 )

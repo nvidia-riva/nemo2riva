@@ -14,9 +14,8 @@ import warnings
 from dataclasses import dataclass
 from typing import Optional
 
-from nemo2riva.artifacts import retrieve_artifacts_as_dict
-from nemo2riva.cookbook import Nemo2RivaCookbook
-from nemo2riva.patches import patches
+from nemo2riva.artifacts import get_artifacts
+from nemo2riva.cookbook import save_archive
 from nemo2riva.schema import get_export_config, validate_archive
 from nemo.core import ModelPT
 
@@ -48,9 +47,8 @@ def Nemo2Riva(args):
     # Change postfix.
     riva_out = os.path.splitext(riva_out)[0] + ".riva"
 
-    cb = Nemo2RivaCookbook()
-
     # Set the same encryption key - in both archives.
+    key = None
     if args.key is not None:
         try:
             with open(args.key, read_mode) as f:
@@ -58,30 +56,13 @@ def Nemo2Riva(args):
         except Exception:
             # literal key
             key = args.key
-        cb.set_encryption_key(key)
     elif cfg.should_encrypt:
         logging.warning('Schema says encryption should be used, but no encryption key passed!')
 
-    # Copy artifacts - first retrieve...
-    artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=nemo_in, binary=True)
-
-    # check if this model has one or more patches to apply, if yes go ahead and run it
-    if model.__class__.__name__ in patches:
-        for patch in patches[model.__class__.__name__]:
-            patch(model, artifacts)
-
-    # ... and next add to "output" cookbook.
-    for k, v in artifacts.items():
-        cb.add_class_file_content(name=k, **v)
-
-    logging.info(
-        "{}: converting {} to  {} using {} export format".format(__name__, nemo_in, riva_out, cfg.export_format)
-    )
-
-    # Create Archive using the recipe.
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=UserWarning)
-        cb.save(obj=model, save_path=riva_out, cfg=cfg)
+        artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key)
+        save_archive(obj=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
 
     logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
 

@@ -2,21 +2,19 @@
 # Define required metadata fields expeced in the archive (optional).
 metadata:
   - obj_cls: nemo.collections.asr.models.EncDecCTCModelBPE
-  - encryption: True
   - min_nemo_version: 1.1 
 
 # Define list of files that are expected (optional).
-file_properties: 
+artifact_properties: 
   # List of files.
   - model_config.yaml
   - model_graph.onnx:
       # Dictionary of expected properties (name:value) (optional).
       onnx: True
-      encrypted: True
 
 # Define list of files with expected content (optional).
 # Functionality limited to yaml files (e.g. model_config.yaml).
-#file_content:
+artifact_content:
   # List of files.
   #- model_config.yaml:
     # List of sections.subsections. ... that are required.

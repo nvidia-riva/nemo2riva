@@ -1,10 +1,14 @@
 import logging
 import os
 import sys
+import tempfile
 
 import torch
-from eff.core import Archive, Cookbook, Expression, Origins, Runtimes
+from eff.callbacks import BinaryContentCallback
+from eff.core import Archive, ArtifactRegistry, File
 from nemo.core import Exportable, ModelPT
+
+from .artifacts import create_artifact
 
 try:
     from contextlib import nullcontext
@@ -13,98 +17,81 @@ except ImportError:
     from contextlib import suppress as nullcontext
 
 
-class Nemo2RivaCookbook(Cookbook):
+def save_archive(obj, save_path, cfg, artifacts, metadata):
 
-    # Class attribute: encryption key - a class property shared between all objects.
-    _encryption_key = None
-
-    # Class attribute: additional medatata that will be added to any instantiated object of that class.
-    _class_metadata = {}
-
-    # Class attribute: additional files that will be added to any instantiated object of that class.
-    _class_file_content = {}
-
-    def save(self, obj, save_path, cfg):
-        runtime = Runtimes.PyTorch
-
-        # Properties:
-        common_meta = {
-            "description": "This format stores the whole model in a single {} graph.".format(cfg.export_format),
-            "obj_cls": Archive.generate_obj_cls(obj),
-            "origin": Origins.NeMo,
-            # Indicate that it has config file.
-            "has_nemo_config": True,
+    metadata.update(
+        {
+            "description": "Exported Nemo Model, in {} format.".format(cfg.export_format),
+            "format_version": 3,
+            "has_pytorch_checkpoint": False,
+            # use 'normalized' class name
+            "obj_cls": cfg.cls,
+            "min_nemo_version": "1.3",
         }
+    )
 
-        if cfg.export_format == "TS":
-            format_meta = {
-                "runtime": Runtimes.PyTorch,
-                "nemo_archive_version": 2,
-            }
-        elif cfg.export_format == "ONNX":
-            format_meta = {
-                "runtime": Runtimes.ONNX,
-                "onnx_archive_format": 1,
-            }
-        elif cfg.export_format == "CKPT":
-            format_meta = {
-                "runtime": Runtimes.PyTorch,
-                "has_pytorch_checkpoint": True,
-            }
+    if cfg.export_format == "TS":
+        format_meta = {
+            "torchscript": True,
+            "nemo_archive_version": 2,
+            "runtime": "TorchScript",
+        }
+    elif cfg.export_format == "ONNX":
+        format_meta = {
+            "onnx": True,
+            "onnx_archive_format": 1,
+            "runtime": "ONNX",
+        }
+    elif cfg.export_format == "CKPT":
+        format_meta = {"has_pytorch_checkpoint": True, "runtime": "PyTorch"}
+        metadata.update(format_meta)
 
-        # Create EFF archive.
-        with Archive.create(
-            save_path=save_path, encryption_key=self.get_encryption_key(), **common_meta, **format_meta,
-        ) as effa:
+    runtime = format_meta["runtime"]
+    metadata.update({"runtime": runtime})
 
-            # Add additional metadata stored by the NeMoCookbook class.
-            effa.add_metadata(force=True, **self.class_metadata)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        export_file = os.path.join(tmpdir, cfg.export_file)
+        if cfg.export_format in ["ONNX", "TS"]:
+            # Export the model, get the descriptions.
+            if not isinstance(obj, Exportable):
+                logging.error("Nemo2Jarvis: Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
+                sys.exit(1)
 
-            if cfg.export_format in ["ONNX", "TS"]:
-                # Add exported file to the archive.
-                model_graph = effa.create_file_handle(
-                    name=cfg.export_file,
-                    description="Exported model graph",
-                    encrypted=(self.get_encryption_key() is not None),
-                    onnx=True,
-                )
-
-                # Export the model, get the descriptions.
-                if not isinstance(obj, Exportable):
-                    logging.error("Nemo2Jarvis: Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
-                    sys.exit(1)
-
-                try:
-                    autocast = torch.cuda.amp.autocast if cfg.autocast else nullcontext
-                    with autocast():
-                        logging.info(f"Exporting model with autocast={cfg.autocast}")
-                        _, descriptions = obj.export(model_graph, check_trace=cfg.args.runtime_check)
-                except Exception as e:
-                    logging.error(
-                        "Nemo2Jarvis: Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
-                            obj.cfg.target
-                        )
+            try:
+                autocast = nullcontext
+                if torch.cuda.is_available:
+                    obj = obj.cuda()
+                    if cfg.autocast:
+                        autocast = torch.cuda.amp.autocast
+                with autocast():
+                    logging.info(f"Exporting model with autocast={cfg.autocast}")
+                    _, descriptions = obj.export(export_file, check_trace=cfg.args.runtime_check)
+            except Exception as e:
+                logging.error(
+                    "Nemo2Jarvis: Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
+                        obj.cfg.target
                     )
-                    raise e
-
-                # Overwrite the file description.
-                effa.add_file_properties(name=cfg.export_file, force=True, description=descriptions[0])
-
-            elif cfg.export_format == "CKPT":
-                # Add model weights to archive - encrypt when the encryption key is provided.
-                model_weights = effa.create_file_handle(
-                    name=cfg.export_file,
-                    description="File containing model weights",
-                    encrypted=(self.get_encryption_key() is not None),
                 )
-                # Save model state using torch save.
-                torch.save(obj.state_dict(), model_weights)
+                raise e
 
-            # Add artifacts
-            for filename, (content, props) in self.class_file_content.items():
-                # Create handle and pass properties - potentially overwrite the old files with new ones.
-                file_handle = effa.create_file_handle(name=filename, force=True, **props)
-                # Write content depending on its type (bytes vs strings).
-                write_mode = "wb" if type(content) == bytes else "w"
-                with open(file_handle, write_mode) as f:
-                    f.write(content)
+        elif cfg.export_format == "CKPT":
+            # Save model state using torch save.
+            torch.save(obj.state_dict(), export_file)
+
+        # Add exported file to the artifact registry
+
+        create_artifact(
+            artifacts,
+            cfg.export_file,
+            do_encrypt=cfg.encryption,
+            filepath=export_file,
+            description="Exported model",
+            content_callback=BinaryContentCallback,
+            **format_meta,
+        )
+
+        logging.info("Saving to {}".format(save_path))
+        # Create EFF archive.
+        Archive.save_registry(
+            save_path=save_path, registry_name="artifacts", registry=artifacts, **metadata,
+        )

@@ -12,39 +12,21 @@ import tarfile
 import traceback
 from typing import Optional
 
-from nemo.utils import model_utils
+import yaml
+from eff.callbacks import (
+    BinaryContentCallback,
+    ContentCallback,
+    PickleContentCallback,
+    StringContentCallback,
+    VocabularyContentCallback,
+    YamlContentCallback,
+)
+from eff.core import ArtifactRegistry, File, Memory
+from nemo2riva.patches import patches
 
 
-def art_from_name(tar, art_path, conf_name, description=""):
-    try:
-        member = tar.getmember(art_path)
-        if member.isfile():
-            f = tar.extractfile(member)
-            artifact_content = f.read()
-            # Use file name as key (not the whole path).
-            _, file_key = os.path.split(member.name)
-
-            # Add artifact.
-            return (
-                file_key,
-                {
-                    "description": description,
-                    "conf_path": conf_name,
-                    "path_type": model_utils.ArtifactPathType.TAR_PATH,
-                    "nemo_artifact": True,
-                    "content": artifact_content,
-                },
-            )
-    except Exception:
-        tb = traceback.format_exc()
-        logging.error(f"Could not retrieve the artifact {art_path} used in {conf_name}. Error occured:\n{tb}")
-    return None, None
-
-
-def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = None, binary: bool = False):
-    """Retrieves all NeMo artifacts and returns them as dict.
-        If model object is passed, it first copies artifacts that it "stores" internally.
-
+def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = None):
+    """ Retrieves all NeMo artifacts and returns them as dict
         Args:
             restore_path: path to file from which the model was restored (and which contains the artifacts).
             obj: ModelPT object (Optional, DEFAULT: None)
@@ -56,23 +38,84 @@ def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = Non
     # Returned dictionary.
     artifacts = {}
 
-    # Set read mode depending on the format (string/binary) - for all files.
-    read_mode = "rb" if binary else "r"
-
     # Open the archive.
-    with tarfile.open(restore_path, "r:gz") as tar:
+    with tarfile.open(restore_path, "r") as tar:
         tar_names = tar.getnames()
         # Everything included in the tarfile
         for name in tar_names:
-            key, content = art_from_name(tar, name, name)
-            if (
-                key is not None
-                and not key.endswith(".ckpt")
-                and not key.endswith(".pt")
-                and not key.endswith(".ts")
-                and not key.endswith("~")
-            ):
-                artifacts[key] = content
+            try:
+                if (
+                    obj is not None
+                    and name.endswith(".ckpt")
+                    or name.endswith(".pt")
+                    or name.endswith(".ts")
+                    or name.endswith("~")
+                ):
+                    logging.info(f"Found model at {name}")
+                else:
+                    member = tar.getmember(name)
+                    _, file_key = os.path.split(member.name)
+
+                    if member.isfile():
+                        f = tar.extractfile(member)
+                        artifact_content = f.read()
+                        aname = member.name
+                        if aname.startswith('./'):
+                            aname = aname[2:]
+                        artifacts[file_key] = {
+                            "conf_path": aname,
+                            "path_type": "TAR_PATH",
+                            "content": artifact_content,
+                        }
+            except Exception:
+                tb = traceback.format_exc()
+                logging.error(f"Could not retrieve the artifact {file_key} at {member.name}. Error occured:\n{tb}")
+    return artifacts
+
+
+def create_artifact(reg, key, do_encrypt, **af_dict):
+    # only works for plain content now - no encryption in Nemo
+    encryption = False
+    if 'encrypted' in af_dict:
+        do_encrypt = af_dict['encrypted']
+        af_dict.pop('encrypted')
+    if do_encrypt:
+        encryption = get_random_encryption()
+
+    af = reg.create(name=key, encryption=encryption, **af_dict,)
+    if do_encrypt:
+        af.encrypt()
+    return af
+
+
+def get_artifacts(restore_path: str, model=None, passphrase=None):
+    artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
+
+    # check if this model has one or more patches to apply, if yes go ahead and run it
+    if model is not None and model.__class__.__name__ in patches:
+        for patch in patches[model.__class__.__name__]:
+            patch(model, artifacts)
+
+    if 'manifest.yaml' in artifacts.keys():
+        nemo_manifest = yaml.safe_load(artifacts['manifest.yaml']['content'])
+    else:
+        nemo_manifest = {'files': artifacts, 'metadata': {'format_version': 1}}
+        if 'model_config.yaml' in artifacts.keys():
+            nemo_manifest['has_nemo_config'] = True
+
+    nemo_files = nemo_manifest['files']
+    nemo_metadata = nemo_manifest['metadata']
+    reg = ArtifactRegistry(passphrase=passphrase)
+
+    for key, af_dict in artifacts.items():
+        if key in nemo_files:
+            af_dict.update(nemo_files[key])
+        elif './' + key in nemo_files:
+            af_dict.update(nemo_files['./' + key])
+
+        cb_override = BinaryContentCallback
+
+        create_artifact(reg, key, False, content_callback=cb_override, **af_dict)
 
     logging.info(f"Retrieved artifacts: {artifacts.keys()}")
-    return artifacts
+    return reg, nemo_manifest
