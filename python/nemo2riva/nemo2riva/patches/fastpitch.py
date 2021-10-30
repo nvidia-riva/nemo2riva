@@ -18,7 +18,7 @@ def generate_vocab_mapping(model, artifacts):
                 # since nemo preprocessing includes a .tolower
                 mapping.append("{} {}".format(idx, token.upper()))
 
-        mapping_txt = "\n".join(mapping)
+        mapping_txt = "\n".join(mapping).encode('utf-8')
 
         content = {
             "description": "mapping file for FastPitch",

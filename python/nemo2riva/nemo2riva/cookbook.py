@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 import sys
@@ -95,3 +96,7 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
         Archive.save_registry(
             save_path=save_path, registry_name="artifacts", registry=artifacts, **metadata,
         )
+        del artifacts
+        gc.collect()
+
+        
