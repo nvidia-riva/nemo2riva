@@ -98,5 +98,3 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
         )
         del artifacts
         gc.collect()
-
-        

@@ -9,6 +9,7 @@
 import logging
 import sys
 
+from eff.package_info import __version__ as eff_version
 from nemo2riva.args import get_args
 from nemo2riva.convert import Nemo2Riva
 
@@ -37,7 +38,6 @@ def nemo2riva(argv=None):
         numeric_level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(numeric_level, int):
             raise ValueError('Invalid log level: %s' % numeric_level)
-
         loglevel = numeric_level
 
     logger = logging.getLogger(__name__)
@@ -48,6 +48,15 @@ def nemo2riva(argv=None):
     logging.info("Logging level set to {}".format(loglevel))
 
     Nemo2Riva(args)
+
+    eff_base_version = eff_version.split('-')[0]
+    if eff_base_version == '0.5.2':
+        logger.warning(
+            "\n************************************************************************\n"
+            "       Please ignore the pyarmor warnings below.\n"
+            "       Please upgrade nvidia-eff package to >=0.5.3 if available.\n"
+            "************************************************************************\n"
+        )
 
 
 if __name__ == '__main__':
