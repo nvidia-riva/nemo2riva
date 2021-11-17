@@ -55,7 +55,7 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
         if cfg.export_format in ["ONNX", "TS"]:
             # Export the model, get the descriptions.
             if not isinstance(obj, Exportable):
-                logging.error("Nemo2Jarvis: Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
+                logging.error("Your NeMo model class ({}) is not Exportable.".format(obj.cfg.target))
                 sys.exit(1)
 
             try:
@@ -69,7 +69,7 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
                     _, descriptions = obj.export(export_file, check_trace=cfg.args.runtime_check)
             except Exception as e:
                 logging.error(
-                    "Nemo2Jarvis: Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
+                    "Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
                         obj.cfg.target
                     )
                 )

@@ -34,7 +34,7 @@ def Nemo2Riva(args):
         model = ModelPT.restore_from(restore_path=nemo_in)
     except Exception as e:
         logging.error(
-            "Nemo2Jarvis: Failed to restore model from NeMo file : {}. Please make sure you have the latest NeMo package installed with [all] dependencies.".format(
+            "Failed to restore model from NeMo file : {}. Please make sure you have the latest NeMo package installed with [all] dependencies.".format(
                 nemo_in
             )
         )
