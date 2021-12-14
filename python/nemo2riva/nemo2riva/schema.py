@@ -17,7 +17,8 @@ from eff.core import Archive
 from eff.validator import schema_validate_archive
 from nemo.package_info import __version__ as nemo_version
 from omegaconf import OmegaConf
-from packaging import version
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
 schema_dict = None
 
@@ -145,36 +146,44 @@ def get_export_config(model, args):
     # save 'normalized' class name
     conf.cls = key
 
-    check_nemo_version(conf)
+    conf_check_nemo_version(conf)
 
     return conf
 
 
-def check_nemo_version(conf):
+def check_nemo_version(spec_str, error=True, prereleases=True):
     """
-       Check if installed NeMo version is sufficient to restore/export model.
+       Check if installed NeMo version conforms to spec_str
     """
+    spec = SpecifierSet(spec_str, prereleases=prereleases)
+    if nemo_version in spec:
+        logging.info("Checking installed NeMo version ... {} OK ({})".format(nemo_version, spec_str))
+    else:
+        msg = "This model requires nemo_toolkit package version {}, you have {} installed.\nPlease install nemo_toolkit {}.".format(
+            spec_str, nemo_version, spec_str
+        )
+        if error:
+            logging.error(msg)
+            sys.exit(1)
+        else:
+            logging.warning(msg)
+
+
+def conf_check_nemo_version(conf):
+    """
+       Check if installed NeMo version conforms to model config
+    """
+    spec_str = None
     if conf.validation_schema is not None:
         schema = OmegaConf.load(conf.validation_schema)
-        key = ''
-        min_nemo_version = None
-
         for meta in schema.metadata:
             if 'min_nemo_version' in meta.keys():
-                min_nemo_version = meta['min_nemo_version']
+                min_version = meta['min_nemo_version']
+                spec_str = f">={min_version}"
+                break
 
-        if min_nemo_version is not None:
-            if version.parse(str(min_nemo_version)) > version.parse(nemo_version):
-                msg = "This model requires NeMo version >= {}, you have {} installed. Please install NeMo >= {}.".format(
-                    min_nemo_version, nemo_version, min_nemo_version
-                )
-                if conf.args.validate:
-                    logging.error(msg)
-                    sys.exit(1)
-                else:
-                    logging.warning(msg)
-            else:
-                logging.info("Checking installed NeMo version ... {} OK".format(nemo_version))
+    if spec_str is not None:
+        check_nemo_version(spec_str, conf.args.validate)
 
 
 def validate_archive(save_path, schema):
