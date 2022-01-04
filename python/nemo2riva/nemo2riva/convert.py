@@ -13,6 +13,7 @@ import traceback
 import warnings
 from dataclasses import dataclass
 from typing import Optional
+import torch
 
 from nemo2riva.artifacts import get_artifacts
 from nemo2riva.cookbook import save_archive
@@ -59,10 +60,12 @@ def Nemo2Riva(args):
     elif cfg.should_encrypt:
         logging.warning('Schema says encryption should be used, but no encryption key passed!')
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=UserWarning)
-        artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key)
-        save_archive(obj=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
+    model.eval()
+    with torch.no_grad():
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key)
+            save_archive(obj=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
 
     logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
 

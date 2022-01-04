@@ -6,7 +6,10 @@ def generate_vocab_mapping(model, artifacts):
     # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
     if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):
         logging.info("Adding mapping.txt for FastPitchModel instance to output file")
-        labels = model.vocab.labels
+        if hasattr(model.vocab, "labels"):
+            labels = model.vocab.labels
+        else:
+            labels = model.vocab.tokens
         mapping = []
         for idx, token in enumerate(labels):
             if not str.islower(token) and str.isalnum(token):
