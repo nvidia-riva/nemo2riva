@@ -59,14 +59,34 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
                 sys.exit(1)
 
             try:
-                autocast = nullcontext
+                need_autocast = False
                 if torch.cuda.is_available:
                     obj = obj.cuda()
                     if cfg.autocast:
-                        autocast = torch.cuda.amp.autocast
+                        need_autocast = True
+                    if cfg.args.autocast is not None:
+                        need_autocast = cfg.args.autocast
+                if need_autocast:
+                    autocast = torch.cuda.amp.autocast
+                else:
+                    autocast = nullcontext
                 with autocast():
-                    logging.info(f"Exporting model with autocast={cfg.autocast}")
-                    _, descriptions = obj.export(export_file, check_trace=cfg.args.runtime_check)
+                    logging.info(f"Exporting model with autocast={need_autocast}")
+                    in_args = {}
+                    if cfg.args.max_batch is not None:
+                        in_args["max_batch"] = cfg.args.max_batch
+                    if cfg.args.max_dim is not None:
+                        in_args["max_dim"] = cfg.args.max_dim
+
+                    input_example = obj._get_input_example(**in_args)
+
+                    _, descriptions = obj.export(
+                        export_file,
+                        input_example=input_example,
+                        check_trace=cfg.args.runtime_check,
+                        onnx_opset_version=cfg.args.onnx_opset,
+                        verbose=cfg.args.verbose,
+                    )
             except Exception as e:
                 logging.error(
                     "Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
