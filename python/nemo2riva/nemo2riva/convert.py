@@ -13,8 +13,8 @@ import traceback
 import warnings
 from dataclasses import dataclass
 from typing import Optional
-import torch
 
+import torch
 from nemo2riva.artifacts import get_artifacts
 from nemo2riva.cookbook import save_archive
 from nemo2riva.schema import get_export_config, validate_archive
