@@ -77,8 +77,12 @@ def save_archive(obj, save_path, cfg, artifacts, metadata):
                         in_args["max_batch"] = cfg.args.max_batch
                     if cfg.args.max_dim is not None:
                         in_args["max_dim"] = cfg.args.max_dim
-
-                    input_example = obj._get_input_example(**in_args)
+                    # `_get_input_example()` method was introduced in NeMo v1.3.0. For NeMo versions
+                    # <1.3.0 `input_module.input_example()` should be used.
+                    if hasattr(obj, '_get_input_example'):
+                        input_example = obj._get_input_example(**in_args)
+                    else:
+                        input_example = obj.input_module.input_example(**in_args)
 
                     _, descriptions = obj.export(
                         export_file,
