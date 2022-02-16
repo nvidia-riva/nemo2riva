@@ -36,7 +36,7 @@ class ExportConfig:
 
     # Encryption option.
     should_encrypt: bool = False
-
+    encryption: Optional[str] = None
     validation_schema: Optional[str] = None
 
 
@@ -104,7 +104,6 @@ def get_export_config(model, args):
 
     # create config object with default values (ONNX)
     conf = ExportConfig()
-
     key = get_schema_key(model)
 
     #

@@ -65,7 +65,7 @@ def Nemo2Riva(args):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
             artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key)
-            save_archive(obj=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
+            save_archive(model=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
 
     logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
 
