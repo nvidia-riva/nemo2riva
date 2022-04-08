@@ -2,15 +2,16 @@
 # Define required metadata fields expeced in the archive (optional).
 metadata:
   - obj_cls: nemo.collections.tts.models.HifiGanModel
-  - min_nemo_version: 1.1 
+  - min_nemo_version: 1.1
 
 # Define list of files that are expected (optional).
-artifact_properties: 
+artifact_properties:
   # List of files.
   - model_config.yaml
   - model_graph.onnx:
       # Dictionary of expected properties (name:value) (optional).
       onnx: True
+      encryption: True
 
 # Define list of files with expected content (optional).
 # Functionality limited to yaml files (e.g. model_config.yaml).

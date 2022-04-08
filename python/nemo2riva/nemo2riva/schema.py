@@ -72,7 +72,7 @@ def load_schemas():
             if 'obj_cls' in meta.keys():
                 key = meta['obj_cls']
         schema_dict[key] = f
-        print(f"Loaded schema file {f} for {key}")
+        logging.info(f"Loaded schema file {f} for {key}")
 
 
 def get_export_format(schema_path):

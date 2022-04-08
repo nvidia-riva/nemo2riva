@@ -21,6 +21,7 @@ from eff.callbacks import (
     VocabularyContentCallback,
     YamlContentCallback,
 )
+from eff.codec import get_random_encryption
 from eff.core import ArtifactRegistry, File, Memory
 from nemo2riva.patches import patches
 
@@ -79,7 +80,7 @@ def create_artifact(reg, key, do_encrypt, **af_dict):
     if 'encrypted' in af_dict:
         do_encrypt = af_dict['encrypted']
         af_dict.pop('encrypted')
-    if do_encrypt:
+    if do_encrypt and key is not None:  # No encryption if no key was given
         encryption = get_random_encryption()
 
     af = reg.create(name=key, encryption=encryption, **af_dict,)
