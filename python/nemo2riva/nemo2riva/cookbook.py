@@ -70,9 +70,7 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
             in_args = {}
             error_msg = (
                 "ERROR: Export failed. Please make sure your NeMo model class ({}) has working export() and that "
-                "you have the latest NeMo package installed with [all] dependencies.".format(
-                    model.cfg.target
-                )
+                "you have the latest NeMo package installed with [all] dependencies.".format(model.cfg.target)
             )
             try:
                 autocast = nullcontext

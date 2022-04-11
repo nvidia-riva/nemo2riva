@@ -14,7 +14,6 @@ from nemo2riva.args import get_args
 from nemo2riva.convert import Nemo2Riva
 from nemo2riva.cookbook import CudaOOMInExportOfASRWithMaxDim
 
-
 """
 
 # Exemplary call:
