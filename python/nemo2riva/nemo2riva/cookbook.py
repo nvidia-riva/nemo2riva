@@ -20,6 +20,12 @@ except ImportError:
     from contextlib import suppress as nullcontext
 
 
+class CudaOOMInExportOfASRWithMaxDim(Exception):
+    def __init__(self, *args, max_dim=None):
+        super().__init__(*args)
+        self.max_dim = max_dim
+
+
 def save_archive(model, save_path, cfg, artifacts, metadata):
 
     metadata.update(
@@ -61,6 +67,13 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
                 logging.error("Your NeMo model class ({}) is not Exportable.".format(model.cfg.target))
                 sys.exit(1)
 
+            in_args = {}
+            error_msg = (
+                "ERROR: Export failed. Please make sure your NeMo model class ({}) has working export() and that "
+                "you have the latest NeMo package installed with [all] dependencies.".format(
+                    model.cfg.target
+                )
+            )
             try:
                 autocast = nullcontext
                 need_autocast = cfg.autocast
@@ -69,9 +82,13 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
                 if need_autocast:
                     autocast = torch.cuda.amp.autocast
 
-                in_args = {}
                 if cfg.args.max_batch is not None:
                     in_args["max_batch"] = cfg.args.max_batch
+
+                # Set max_dim if specified in cfg
+                if cfg.max_dim is not None:
+                    in_args["max_dim"] = cfg.max_dim
+                # Overide max_dim if specified in args
                 if cfg.args.max_dim is not None:
                     in_args["max_dim"] = cfg.args.max_dim
 
@@ -93,13 +110,19 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
                     graph.fold_constants().cleanup()
                     model_onnx = gs.export_onnx(graph)
                     onnx.save_model(model_onnx, export_file)
-
+            except RuntimeError as e:
+                if (
+                    model.__class__.__name__ == 'EncDecCTCModelBPE'
+                    and model.encoder.__class__.__name__ == 'ConformerEncoder'
+                    and "max_dim" in in_args
+                    and "CUDA out of memory" in str(e)
+                ):
+                    raise CudaOOMInExportOfASRWithMaxDim(max_dim=in_args['max_dim'])
+                else:
+                    logging.error(error_msg)
+                    raise e
             except Exception as e:
-                logging.error(
-                    "Export failed. Please make sure your NeMo model class ({}) has working export() and that you have the latest NeMo package installed with [all] dependencies.".format(
-                        model.cfg.target
-                    )
-                )
+                logging.error(error_msg)
                 raise e
 
         elif cfg.export_format == "CKPT":

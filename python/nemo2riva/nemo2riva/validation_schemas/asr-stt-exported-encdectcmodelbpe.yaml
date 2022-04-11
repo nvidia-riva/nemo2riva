@@ -11,6 +11,10 @@ artifact_properties:
   - model_graph.onnx:
       # Dictionary of expected properties (name:value) (optional).
       onnx: True
+      autocast: True
+      # Setting max dim to 100000 (~15 minutes)
+      # If export fails and model type is Conformer, will print error msg recommending to lower this value
+      max_dim: 100000
 
 # Define list of files with expected content (optional).
 # Functionality limited to yaml files (e.g. model_config.yaml).

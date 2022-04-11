@@ -8,4 +8,4 @@ def bpe_check_inputs_and_version(model, artifacts):
         enc_class = model.encoder.__class__.__name__
         if enc_class == "ConformerEncoder":
             logging.info("Checking Nemo version for ConformerEncoder ...")
-            check_nemo_version(">=1.6.0rc0")
+            check_nemo_version(">=1.7.0rc0")

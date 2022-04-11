@@ -32,6 +32,7 @@ class ExportConfig:
     # Export format.
     export_format: str = "ONNX"
     autocast: bool = False
+    max_dim: int = None
     export_file: str = "model_graph.onnx"
 
     # Encryption option.
@@ -128,6 +129,7 @@ def get_export_config(model, args):
         else:
             conf.export_format = "CKPT"
         conf.autocast = export_obj[conf.export_file].get('autocast', False)
+        conf.max_dim = export_obj[conf.export_file].get('max_dim', None)
         conf.encryption = export_obj[conf.export_file].get('encryption', None)
 
     # Optional export format override
