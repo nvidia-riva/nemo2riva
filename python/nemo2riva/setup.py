@@ -14,7 +14,13 @@ from pathlib import Path
 
 from setuptools import Extension, setup
 
-install_requirements = ["isort<5.0", "nemo_toolkit>=1.0.0", "nvidia-eff>=0.5.3,<0.6.0", "onnxruntime<=1.9", "onnx_graphsurgeon"]
+install_requirements = [
+    "isort<5.0",
+    "nemo_toolkit>=1.0.0",
+    "nvidia-eff>=0.5.3,<0.6.0",
+    "onnxruntime<=1.9",
+    "onnx_graphsurgeon",
+]
 
 packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches"]
 
