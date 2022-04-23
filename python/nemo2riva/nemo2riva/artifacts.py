@@ -89,13 +89,13 @@ def create_artifact(reg, key, do_encrypt, **af_dict):
     return af
 
 
-def get_artifacts(restore_path: str, model=None, passphrase=None):
+def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs):
     artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
 
     # check if this model has one or more patches to apply, if yes go ahead and run it
     if model is not None and model.__class__.__name__ in patches:
         for patch in patches[model.__class__.__name__]:
-            patch(model, artifacts)
+            patch(model, artifacts, **patch_kwargs)
 
     if 'manifest.yaml' in artifacts.keys():
         nemo_manifest = yaml.safe_load(artifacts['manifest.yaml']['content'])

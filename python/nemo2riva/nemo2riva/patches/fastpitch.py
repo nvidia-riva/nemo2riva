@@ -1,7 +1,7 @@
 import logging
 
 
-def generate_vocab_mapping(model, artifacts):
+def generate_vocab_mapping(model, artifacts, **kwargs):
     # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
     # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
     if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):

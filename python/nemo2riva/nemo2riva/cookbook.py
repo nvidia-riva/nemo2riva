@@ -64,13 +64,13 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
         if cfg.export_format in ["ONNX", "TS"]:
             # Export the model, get the descriptions.
             if not isinstance(model, Exportable):
-                logging.error("Your NeMo model class ({}) is not Exportable.".format(model.cfg.target))
+                logging.error("Your NeMo model class ({}) is not Exportable.".format(metadata['obj_cls']))
                 sys.exit(1)
 
             in_args = {}
             error_msg = (
                 "ERROR: Export failed. Please make sure your NeMo model class ({}) has working export() and that "
-                "you have the latest NeMo package installed with [all] dependencies.".format(model.cfg.target)
+                "you have the latest NeMo package installed with [all] dependencies.".format(metadata['obj_cls'])
             )
             try:
                 autocast = nullcontext

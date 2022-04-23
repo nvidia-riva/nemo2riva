@@ -9,6 +9,7 @@
 
 import logging
 import os
+import sys
 import traceback
 import warnings
 from dataclasses import dataclass
@@ -60,11 +61,23 @@ def Nemo2Riva(args):
     elif cfg.should_encrypt:
         logging.warning('Schema says encryption should be used, but no encryption key passed!')
 
+    patch_kwargs = {}
+    if args.export_subnet:
+        patch_kwargs['export_subnet'] = args.export_subnet
     model.eval()
     with torch.no_grad():
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
-            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key)
+            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key, **patch_kwargs)
+            if args.export_subnet:
+                model = getattr(model, args.export_subnet, None)
+                riva_out = riva_out.split(".")
+                riva_out[-2] += "-" + args.export_subnet
+                riva_out = (".").join(riva_out)
+                if model is None:
+                    logging.error("Failed to find subnetwork named: {}.".format(args.export_subnet))
+                    sys.exit(1)
+
             save_archive(model=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
 
     logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
