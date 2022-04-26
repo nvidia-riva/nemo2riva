@@ -18,7 +18,7 @@ install_requirements = [
     "isort<5.0",
     "nemo_toolkit>=1.0.0",
     "nvidia-eff>=0.5.3,<0.6.0",
-    "onnxruntime<=1.9",
+    "onnxruntime>=1.9",
     "onnx_graphsurgeon",
 ]
 
