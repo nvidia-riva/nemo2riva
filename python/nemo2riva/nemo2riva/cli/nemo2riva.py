@@ -6,13 +6,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import logging
+
 import sys
 
 from eff.package_info import __version__ as eff_version
 from nemo2riva.args import get_args
 from nemo2riva.convert import Nemo2Riva
 from nemo2riva.cookbook import CudaOOMInExportOfASRWithMaxDim
+from nemo.utils import logging
 
 """
 
@@ -29,10 +30,7 @@ nemo2riva model.nemo --out ../model.riva --format onnx
 MINIMUM_ALLOWED_MAX_INPUT_LENGTH_FOR_ASR = 10000
 
 
-def nemo2riva(argv=None):
-    if argv is None:
-        argv = sys.argv[1:]
-    args = get_args(argv)
+def log_config(args):
     loglevel = logging.INFO
     # assuming loglevel is bound to the string value obtained from the
     # command line argument. Convert to upper case to allow the user to
@@ -42,16 +40,19 @@ def nemo2riva(argv=None):
         if not isinstance(numeric_level, int):
             raise ValueError('Invalid log level: %s' % numeric_level)
         loglevel = numeric_level
+    logging.setLevel(loglevel)
+    logging.info("Logging level set to {}".format(logging.getEffectiveLevel()))
 
-    logger = logging.getLogger(__name__)
-    if logger.handlers:
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-    logging.basicConfig(level=loglevel, format='%(asctime)s [%(levelname)s] %(message)s')
-    logging.info("Logging level set to {}".format(loglevel))
+
+def nemo2riva(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    args = get_args(argv)
+    log_config(args)
     max_dim_is_too_large = True
     while max_dim_is_too_large:
         try:
+            logging.info("Before Nemo2Riva")
             Nemo2Riva(args)
             max_dim_is_too_large = False
         except CudaOOMInExportOfASRWithMaxDim as e:

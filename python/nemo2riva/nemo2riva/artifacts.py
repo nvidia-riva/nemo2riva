@@ -6,7 +6,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import logging
 import os
 import tarfile
 import traceback
@@ -24,6 +23,7 @@ from eff.callbacks import (
 from eff.codec import get_random_encryption
 from eff.core import ArtifactRegistry, File, Memory
 from nemo2riva.patches import patches
+from nemo.utils import logging
 
 
 def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = None):

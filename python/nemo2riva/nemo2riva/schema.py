@@ -7,7 +7,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -16,6 +15,7 @@ from typing import Optional
 from eff.core import Archive
 from eff.validator import schema_validate_archive
 from nemo.package_info import __version__ as nemo_version
+from nemo.utils import logging
 from omegaconf import OmegaConf
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version

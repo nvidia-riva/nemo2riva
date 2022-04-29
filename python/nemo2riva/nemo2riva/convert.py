@@ -7,7 +7,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import logging
 import os
 import sys
 import traceback
@@ -20,6 +19,7 @@ from nemo2riva.artifacts import get_artifacts
 from nemo2riva.cookbook import save_archive
 from nemo2riva.schema import get_export_config, validate_archive
 from nemo.core import ModelPT
+from nemo.utils import logging
 
 
 def Nemo2Riva(args):
@@ -29,7 +29,6 @@ def Nemo2Riva(args):
 
     if riva_out is None:
         riva_out = nemo_in
-
     logging.info("Restoring NeMo model from '{}'".format(nemo_in))
     try:
         # Restore instance from .nemo file using generic model restore_from
@@ -41,8 +40,6 @@ def Nemo2Riva(args):
             )
         )
         raise e
-
-    logging.info("Model {} restored from '{}'".format(model.cfg.target, nemo_in))
 
     cfg = get_export_config(model, args)
 
@@ -78,9 +75,10 @@ def Nemo2Riva(args):
                     logging.error("Failed to find subnetwork named: {}.".format(args.export_subnet))
                     sys.exit(1)
 
+            logging.info("Successfully exported model to {}, saving to {} ...".format(cfg.export_file, riva_out))
             save_archive(model=model, save_path=riva_out, cfg=cfg, artifacts=artifacts, metadata=manifest['metadata'])
 
-    logging.info("Successfully exported model to {} and saved to {}".format(cfg.export_file, riva_out))
+    logging.info("Model saved to {}".format(riva_out))
 
     if args.validate:
         validate_archive(riva_out, schema=cfg.validation_schema)

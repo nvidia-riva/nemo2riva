@@ -1,5 +1,4 @@
 import gc
-import logging
 import os
 import sys
 import tempfile
@@ -10,7 +9,7 @@ import torch
 from eff.callbacks import BinaryContentCallback
 from eff.core import Archive, ArtifactRegistry, File
 from nemo.core import Exportable, ModelPT
-
+from nemo.utils import logging
 from .artifacts import create_artifact
 
 try:
