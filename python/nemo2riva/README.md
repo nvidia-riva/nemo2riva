@@ -1,3 +1,3 @@
-# riva-api
+# Nemo2Riva
 
-See latest documentation at http://docs.riva-ai.nvidia.com/main.
+See latest documentation at https://riva-builder-01.nvidia.com/main/model-overview.html?highlight=nemo2riva#export-models-with-nemo2riva.
