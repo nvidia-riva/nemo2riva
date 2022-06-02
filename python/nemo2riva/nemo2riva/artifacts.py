@@ -9,6 +9,7 @@
 import os
 import tarfile
 import traceback
+from logging import exception
 from typing import Optional
 
 import yaml
@@ -22,8 +23,17 @@ from eff.callbacks import (
 )
 from eff.codec import get_random_encryption
 from eff.core import ArtifactRegistry, File, Memory
-from nemo2riva.patches import patches
 from nemo.utils import logging
+
+# fmt: off
+_HAVE_PATCHES = True
+_HAVE_PATCHES_ERROR_MSG = None
+try:
+    from nemo2riva.patches import patches
+except ModuleNotFoundError as e:
+    _HAVE_PATCHES = False
+    _HAVE_PATCHES_ERROR_MSG = e
+# fmt: on
 
 
 def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = None):
@@ -92,10 +102,22 @@ def create_artifact(reg, key, do_encrypt, **af_dict):
 def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs):
     artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
 
+    # NOTE: when servicemaker calls into get_artifacts, model is always None so this code section
+    # is never run.
     # check if this model has one or more patches to apply, if yes go ahead and run it
-    if model is not None and model.__class__.__name__ in patches:
+    if model is not None and _HAVE_PATCHES and model.__class__.__name__ in patches:
         for patch in patches[model.__class__.__name__]:
             patch(model, artifacts, **patch_kwargs)
+    elif not _HAVE_PATCHES:
+        logging.error(
+            "nemo2riva's get_artifacts() was called but was unable to continue due to missing "
+            "modules. Please ensure that nemo_toolkit and it's dependencies are all installed "
+            "before re-running nemo2riva."
+        )
+        if isinstance(_HAVE_PATCHES_ERROR_MSG, exception):
+            raise _HAVE_PATCHES_ERROR_MSG
+        else:
+            raise ModuleNotFoundError
 
     if 'manifest.yaml' in artifacts.keys():
         nemo_manifest = yaml.safe_load(artifacts['manifest.yaml']['content'])
