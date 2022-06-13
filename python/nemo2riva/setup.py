@@ -20,6 +20,7 @@ install_requirements = [
     "nvidia-eff>=0.5.3,<=0.6.2",
     "onnxruntime>=1.9",
     "onnx_graphsurgeon",
+    "packaging",
 ]
 
 packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches"]

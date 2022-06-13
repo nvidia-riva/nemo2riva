@@ -108,7 +108,7 @@ def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs
     if model is not None and _HAVE_PATCHES and model.__class__.__name__ in patches:
         for patch in patches[model.__class__.__name__]:
             patch(model, artifacts, **patch_kwargs)
-    elif not _HAVE_PATCHES:
+    elif model is not None and not _HAVE_PATCHES:
         logging.error(
             "nemo2riva's get_artifacts() was called but was unable to continue due to missing "
             "modules. Please ensure that nemo_toolkit and it's dependencies are all installed "
