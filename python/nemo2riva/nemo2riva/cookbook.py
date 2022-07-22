@@ -25,18 +25,7 @@ class CudaOOMInExportOfASRWithMaxDim(Exception):
         self.max_dim = max_dim
 
 
-def save_archive(model, save_path, cfg, artifacts, metadata):
-
-    metadata.update(
-        {
-            "description": "Exported Nemo Model, in {} format.".format(cfg.export_format),
-            "format_version": 3,
-            "has_pytorch_checkpoint": False,
-            # use 'normalized' class name
-            "obj_cls": cfg.cls,
-            "min_nemo_version": "1.3",
-        }
-    )
+def export_model(model, cfg, args, artifacts, metadata):
 
     if cfg.export_format == "TS":
         format_meta = {
@@ -52,68 +41,53 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
         }
     elif cfg.export_format == "CKPT":
         format_meta = {"has_pytorch_checkpoint": True, "runtime": "PyTorch"}
-        metadata.update(format_meta)
-
+    # TODO: use submodel sections
+    metadata.update(format_meta)
     runtime = format_meta["runtime"]
     metadata.update({"runtime": runtime})
 
     with tempfile.TemporaryDirectory() as tmpdir:
         export_file = os.path.join(tmpdir, cfg.export_file)
-        tmp_export_file = os.path.join(tmpdir, "export.onnx")
+
         if cfg.export_format in ["ONNX", "TS"]:
             # Export the model, get the descriptions.
             if not isinstance(model, Exportable):
                 logging.error("Your NeMo model class ({}) is not Exportable.".format(metadata['obj_cls']))
                 sys.exit(1)
 
-            in_args = {}
             error_msg = (
                 "ERROR: Export failed. Please make sure your NeMo model class ({}) has working export() and that "
-                "you have the latest NeMo package installed with [all] dependencies.".format(metadata['obj_cls'])
+                "you have the latest NeMo package installed with [all] dependencies.".format(model.__class__)
             )
             try:
-                autocast = nullcontext
-                need_autocast = cfg.autocast
-                if cfg.args.autocast is not None:
-                    need_autocast = cfg.args.autocast
-                if need_autocast:
-                    autocast = torch.cuda.amp.autocast
-
-                if cfg.args.max_batch is not None:
-                    in_args["max_batch"] = cfg.args.max_batch
-
-                # Set max_dim if specified in cfg
-                if cfg.max_dim is not None:
-                    in_args["max_dim"] = cfg.max_dim
-                # Overide max_dim if specified in args
-                if cfg.args.max_dim is not None:
-                    in_args["max_dim"] = cfg.args.max_dim
-
+                autocast = torch.cuda.amp.autocast if cfg.autocast else nullcontext
                 with autocast(), torch.inference_mode():
-                    logging.info(f"Exporting model with autocast={need_autocast}")
-                    model = model.to(device=cfg.args.device)
+                    logging.info(f"Exporting model {model.__class__.__name__} with config={cfg}")
+                    model = model.to(device=args.device)
                     model.eval()
+                    in_args = {}
+                    if args.max_batch is not None:
+                        in_args["max_batch"] = args.max_batch
+                    if cfg.max_dim is not None:
+                        in_args["max_dim"] = cfg.max_dim
+
                     input_example = model.input_module.input_example(**in_args)
+
                     _, descriptions = model.export(
-                        tmp_export_file,
+                        export_file,
                         input_example=input_example,
-                        check_trace=cfg.args.runtime_check,
-                        onnx_opset_version=cfg.args.onnx_opset,
-                        verbose=cfg.args.verbose,
+                        check_trace=args.runtime_check,
+                        onnx_opset_version=args.onnx_opset,
+                        verbose=args.verbose,
                     )
-                    del model
-                    model_onnx = onnx.load_model(tmp_export_file)
+                if cfg.export_format == 'ONNX':
+                    model_onnx = onnx.load_model(export_file)
                     graph = gs.import_onnx(model_onnx)
                     graph.fold_constants().cleanup()
                     model_onnx = gs.export_onnx(graph)
                     onnx.save_model(model_onnx, export_file)
             except RuntimeError as e:
-                if (
-                    model.__class__.__name__ == 'EncDecCTCModelBPE'
-                    and model.encoder.__class__.__name__ == 'ConformerEncoder'
-                    and "max_dim" in in_args
-                    and "CUDA out of memory" in str(e)
-                ):
+                if "max_dim" in in_args and "CUDA out of memory" in str(e):
                     raise CudaOOMInExportOfASRWithMaxDim(max_dim=in_args['max_dim'])
                 else:
                     logging.error(error_msg)
@@ -138,10 +112,23 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
             **format_meta,
         )
 
-        logging.info("Saving to {}".format(save_path))
-        # Create EFF archive.
-        Archive.save_registry(
-            save_path=save_path, registry_name="artifacts", registry=artifacts, **metadata,
-        )
-        del artifacts
-        gc.collect()
+
+def save_archive(model, save_path, cfg, artifacts, metadata):
+    metadata.update(
+        {
+            "description": "Exported Nemo Model",
+            "format_version": 3,
+            "has_pytorch_checkpoint": False,
+            # use 'normalized' class name
+            "obj_cls": cfg.cls,
+            "min_nemo_version": "1.3",
+        }
+    )
+
+    logging.info("Saving to {}".format(save_path))
+    # Create EFF archive.
+    Archive.save_registry(
+        save_path=save_path, registry_name="artifacts", registry=artifacts, **metadata,
+    )
+    del artifacts
+    gc.collect()

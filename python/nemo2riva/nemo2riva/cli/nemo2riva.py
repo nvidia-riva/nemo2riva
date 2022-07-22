@@ -52,7 +52,6 @@ def nemo2riva(argv=None):
     max_dim_is_too_large = True
     while max_dim_is_too_large:
         try:
-            logging.info("Before Nemo2Riva")
             Nemo2Riva(args)
             max_dim_is_too_large = False
         except CudaOOMInExportOfASRWithMaxDim as e:

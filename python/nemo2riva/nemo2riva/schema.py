@@ -10,8 +10,9 @@
 import os
 import sys
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
+import torch
 from eff.core import Archive
 from eff.validator import schema_validate_archive
 from nemo.package_info import __version__ as nemo_version
@@ -30,15 +31,72 @@ class ExportConfig:
     """Default config model the model export to ONNX."""
 
     # Export format.
+    export_subnet: str = ""
     export_format: str = "ONNX"
+    export_file: str = "model_graph.onnx"
+    encryption: Optional[str] = None
     autocast: bool = False
     max_dim: int = None
-    export_file: str = "model_graph.onnx"
 
+
+@dataclass
+class ImportConfig:
+    """Default config model for the model that exports to ONNX."""
+
+    exports = [None]
     # Encryption option.
     should_encrypt: bool = False
-    encryption: Optional[str] = None
     validation_schema: Optional[str] = None
+
+
+def get_export_config(export_obj, args):
+    conf = ExportConfig()
+    need_autocast = False
+    if export_obj:
+        conf.export_file = list(export_obj)[0]
+        if conf.export_file.endswith('.onnx'):
+            conf.export_format = "ONNX"
+        elif conf.export_file.endswith('.ts'):
+            conf.export_format = "TS"
+        else:
+            conf.export_format = "CKPT"
+        attribs = export_obj[conf.export_file]
+        conf.autocast = attribs.get('autocast', False)
+        need_autocast = conf.autocast
+
+        conf.max_dim = attribs.get('max_dim', None)
+
+        conf.encryption = attribs.get('encryption', None)
+        if conf.encryption and args.key is None:
+            raise Exception(f"{conf.export_file} requires encryption and no key was given")
+
+        conf.export_subnet = attribs.get('export_subnet', None)
+
+    if args.export_subnet:
+        if conf.export_subnet:
+            raise Exception("Can't combine schema's export_subnet and export-subnet argument!")
+        conf.export_subnet = args.export_subnet
+
+    if args.autocast is not None:
+        need_autocast = args.autocast
+        if need_autocast:
+            autocast = torch.cuda.amp.autocast
+    conf.autocast = need_autocast
+
+    if args.max_dim is not None:
+        conf.max_dim = args.max_dim
+
+    # Optional export format override
+    if args.format is not None:
+        conf.export_format = args.format.upper()
+        conf.export_file = os.path.splitext(conf.export_file)[0] + "." + conf.export_format.lower()
+
+    if conf.export_format not in supported_formats:
+        raise Exception(
+            "Format `{}` is invalid. Please pick one of the ({})".format(conf.export_format, supported_formats)
+        )
+
+    return conf
 
 
 def get_schema_key(model):
@@ -51,6 +109,26 @@ def get_schema_key(model):
     except ValueError:
         pass
     return key
+
+
+def get_subnet(model, subnet):
+    submodel = None
+    if subnet and subnet != 'self':
+        try:
+            # FIXME: remove special case once RNNT Nemo model provides this property
+            if subnet == 'decoder_joint':
+                from nemo.collections.asr.modules.rnnt import RNNTDecoderJoint
+
+                submodel = RNNTDecoderJoint(model.decoder, model.joint)
+            else:
+                submodel = getattr(model, subnet, None)
+        except Exception:
+            pass
+        if submodel is None:
+            raise Exception("Failed to find subnetwork named: {} in {}.".format(subnet, model.__class__))
+    else:
+        submodel = model
+    return submodel
 
 
 def load_schemas():
@@ -76,26 +154,26 @@ def load_schemas():
         logging.info(f"Loaded schema file {f} for {key}")
 
 
-def get_export_format(schema_path):
+def get_exports(schema_path):
     # Load the schema.
     schema = OmegaConf.load(schema_path)
-    obj = {'model_graph.onnx': {'onnx': True, 'autocast': False}}
     file_schemas = schema["file_properties"] if "file_properties" in schema else schema["artifact_properties"]
+    exports = []
     for schema_section in file_schemas:
         try:
-            if (
-                "model_graph.onnx" in schema_section
-                or "model_weights.ckpt" in schema_section
-                or "model_graph.ts" in schema_section
-            ):
-                return schema_section
+            for k in schema_section.keys():
+                if os.path.splitext(k)[1].lower() in [".onnx", ".ckpt", ".pt", ".ts"]:
+                    exports.append(schema_section)
+                    break
         except Exception:
             pass
+    if len(exports) == 0:
+        exports = [None]
 
-    return obj
+    return exports
 
 
-def get_export_config(model, args):
+def get_import_config(model, args):
 
     # Explicit schema name passed in args
     schema = args.schema
@@ -104,7 +182,7 @@ def get_export_config(model, args):
         load_schemas()
 
     # create config object with default values (ONNX)
-    conf = ExportConfig()
+    conf = ImportConfig()
     key = get_schema_key(model)
 
     #
@@ -119,28 +197,11 @@ def get_export_config(model, args):
             "Validation schema not found for {}.\n".format(key)
             + "That means Riva does not yet support a pipeline for this network and likely will not work with it."
         )
+        exports = [None]
     else:
-        export_obj = get_export_format(schema)
-        conf.export_file = list(export_obj)[0]
-        if conf.export_file.endswith('.onnx'):
-            conf.export_format = "ONNX"
-        elif conf.export_file.endswith('.ts'):
-            conf.export_format = "TS"
-        else:
-            conf.export_format = "CKPT"
-        conf.autocast = export_obj[conf.export_file].get('autocast', False)
-        conf.max_dim = export_obj[conf.export_file].get('max_dim', None)
-        conf.encryption = export_obj[conf.export_file].get('encryption', None)
+        exports = get_exports(schema)
 
-    # Optional export format override
-    if args.format is not None:
-        conf.export_format = args.format.upper()
-        conf.export_file = os.path.splitext(conf.export_file)[0] + "." + conf.export_format.lower()
-
-    if conf.export_format not in supported_formats:
-        raise Exception(
-            "Format `{}` is invalid. Please pick one of the ({})".format(conf.export_format, supported_formats)
-        )
+    conf.exports = [get_export_config(export_obj, args) for export_obj in exports]
 
     conf.validation_schema = schema
     conf.args = args
