@@ -4,6 +4,7 @@ import sys
 import nemo
 import torch
 import wrapt
+import yaml
 from nemo.collections.tts.helpers.helpers import regulate_len
 from nemo.core.neural_types.elements import (
     Index,
@@ -25,6 +26,39 @@ from packaging.version import Version
 # sys.modules["PIL"] = MagicMock()
 # sys.modules["PIL.PngImagePlugin"] = MagicMock()
 # # fmt: on
+
+
+@torch.jit.script
+def create_batch(
+    text: torch.Tensor,
+    pitch: torch.Tensor,
+    pace: torch.Tensor,
+    volume: torch.Tensor,
+    batch_lengths: torch.Tensor,
+    padding_idx: int = -1,
+):
+    batch_lengths = batch_lengths.to(torch.int64)
+    max_len = torch.max(batch_lengths[1:] - batch_lengths[:-1])
+
+    index = 1
+    texts = torch.zeros(batch_lengths.shape[0] - 1, max_len, dtype=torch.int64, device=text.device) + padding_idx
+    pitches = torch.zeros(batch_lengths.shape[0] - 1, max_len, dtype=torch.float32, device=text.device)
+    paces = torch.zeros(batch_lengths.shape[0] - 1, max_len, dtype=torch.float32, device=text.device) + 1.0
+    volumes = torch.zeros(batch_lengths.shape[0] - 1, max_len, dtype=torch.float32, device=text.device) + 1.0
+
+    while index < batch_lengths.shape[0]:
+        seq_start = batch_lengths[index - 1]
+        seq_end = batch_lengths[index]
+        cur_seq_len = seq_end - seq_start
+
+        texts[index - 1, :cur_seq_len] = text[seq_start:seq_end]
+        pitches[index - 1, :cur_seq_len] = pitch[seq_start:seq_end]
+        paces[index - 1, :cur_seq_len] = pace[seq_start:seq_end]
+        volumes[index - 1, :cur_seq_len] = volume[seq_start:seq_end]
+
+        index += 1
+
+    return texts, pitches, paces, volumes
 
 
 def generate_vocab_mapping(model, artifacts, **kwargs):
@@ -58,27 +92,31 @@ def generate_vocab_mapping(model, artifacts, **kwargs):
         artifacts["mapping.txt"] = content
 
 
-def patch_volume(model, artifacts, **kwargs):
-    # Add volume ability for models made in NeMo <= 1.9.0
+def fastpitch_model_versioning(model, artifacts, **kwargs):
+    # Riva supports some additional features over NeMo fastpitch models depending on the version
+    # Namely, we need to patch in volume support and ragged batched support for lower NeMo versions
     try:
         nemo_version = Version(nemo.__version__)
     except NameError:
         # If can't find the nemo version, return without patching
         return None
-    if model.__class__.__name__ == 'FastPitchModel' and nemo_version < Version('1.10.0'):
-        fp_input_example = model.input_example()[0]
-        if 'volume' not in fp_input_example:
+    if model.__class__.__name__ == 'FastPitchModel':
+        if nemo_version < Version('1.11.0'):
+            # If nemo_version is less than 1.10, we need to manually add the volume updates
+            # and the ragged batch updates
+
             # Patch model's _prepare_for_export()
             def _prepare_for_export(self, **kwargs):
                 super(model.__class__, model)._prepare_for_export(**kwargs)
 
                 # Define input_types and output_types as required by export()
                 self._input_types = {
-                    "text": NeuralType(('B', 'T_text'), TokenIndex()),
-                    "pitch": NeuralType(('B', 'T_text'), RegressionValuesType()),
-                    "pace": NeuralType(('B', 'T_text'), optional=True),
-                    "volume": NeuralType(('B', 'T_text')),
-                    "speaker": NeuralType(('B'), Index()),
+                    "text": NeuralType(('T'), TokenIndex()),
+                    "pitch": NeuralType(('T'), RegressionValuesType()),
+                    "pace": NeuralType(('T')),
+                    "speaker": NeuralType(('B'), Index(), optional=True),
+                    "volume": NeuralType(('T'), optional=True),
+                    "batch_lengths": NeuralType(('B'), optional=True),
                 }
                 self._output_types = {
                     "spect": NeuralType(('B', 'D', 'T_spec'), MelSpectrogramType()),
@@ -90,28 +128,52 @@ def patch_volume(model, artifacts, **kwargs):
                 }
 
             model.__class__._prepare_for_export = _prepare_for_export
+
             # Patch module's infer()
-            def forward_for_export(self, text, pitch, pace, volume, speaker=None):
-                base_return = self.fastpitch.infer(text=text, pitch=pitch, pace=pace, speaker=speaker)
-                durs_predicted = base_return[2]
-                assert volume is not None
-                volume_extended, _ = regulate_len(durs_predicted, volume.unsqueeze(-1), pace)
-                volume_extended = volume_extended.squeeze(-1).float()
-                return (*base_return, volume_extended)
+            def forward_for_export(self, text, pitch, pace, volume, batch_lengths, speaker=None):
+                text, pitch, pace, volume = create_batch(
+                    text, pitch, pace, volume, batch_lengths, padding_idx=self.fastpitch.encoder.padding_idx
+                )
+                try:
+                    return self.fastpitch.infer(text=text, pitch=pitch, pace=pace, speaker=speaker, volume=volume)
+                except TypeError as e:
+                    if 'volume' in str(e):
+                        # NeMo version <= 1.9.0 when we don't return volume
+                        base_return = self.fastpitch.infer(text=text, pitch=pitch, pace=pace, speaker=speaker)
+                        durs_predicted = base_return[2]
+                        volume_extended, _ = regulate_len(durs_predicted, volume.unsqueeze(-1), pace)
+                        volume_extended = volume_extended.squeeze(-1).float()
+                        return (*base_return, volume_extended)
 
             model.__class__.forward_for_export = forward_for_export
+
             # Patch module's input_example()
             def input_example(self, max_batch=1, max_dim=128):
                 par = next(self.fastpitch.parameters())
-                sz = (max_batch, max_dim)
+                sz = max_batch * max_dim
                 inp = torch.randint(
-                    0, self.fastpitch.encoder.word_emb.num_embeddings, sz, device=par.device, dtype=torch.int64
+                    0, self.fastpitch.encoder.word_emb.num_embeddings, (sz,), device=par.device, dtype=torch.int64
                 )
-                pitch = torch.randn(sz, device=par.device, dtype=torch.float32) * 0.5
-                pace = torch.clamp((torch.randn(sz, device=par.device, dtype=torch.float32) + 1) * 0.1, min=0.01)
-                volume = torch.clamp((torch.randn(sz, device=par.device, dtype=torch.float32) + 1) * 0.1, min=0.01)
+                pitch = torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.5
+                pace = torch.clamp(torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
+                volume = torch.clamp(torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
+                batch_lengths = torch.zeros((max_batch + 1), device=par.device, dtype=torch.int32)
+                left_over_size = sz
+                batch_lengths[0] = 0
+                for i in range(1, max_batch):
+                    length = torch.randint(1, left_over_size - (max_batch - i), (1,), device=par.device)
+                    batch_lengths[i] = length + batch_lengths[i - 1]
+                    left_over_size -= length.detach().cpu().numpy()[0]
+                batch_lengths[-1] = left_over_size + batch_lengths[-2]
 
-                inputs = {'text': inp, 'pitch': pitch, 'pace': pace, 'volume': volume}
+                sum = 0
+                index = 1
+                while index < len(batch_lengths):
+                    sum += batch_lengths[index] - batch_lengths[index - 1]
+                    index += 1
+                assert sum == sz, f"sum: {sum}, sz: {sz}, lengths:{batch_lengths}"
+
+                inputs = {'text': inp, 'pitch': pitch, 'pace': pace, 'volume': volume, 'batch_lengths': batch_lengths}
 
                 if self.fastpitch.speaker_emb is not None:
                     inputs['speaker'] = torch.randint(
@@ -125,3 +187,14 @@ def patch_volume(model, artifacts, **kwargs):
                 return (inputs,)
 
             model.__class__.input_example = input_example
+        else:
+            # NeMo version >= 1.11.0; can just set the relevant flags
+            model.export_config["enable_volume"] = True
+            model.export_config["enable_ragged_batches"] = True
+
+        # Patch the model config yaml to add the volume and ragged batch flags
+        for art in artifacts:
+            if art == 'model_config.yaml':
+                model_config = yaml.safe_load(artifacts['model_config.yaml']['content'])
+                model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': True}
+                artifacts['model_config.yaml']['content'] = yaml.dump(model_config).encode()

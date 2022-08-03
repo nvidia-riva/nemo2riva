@@ -137,7 +137,6 @@ def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs
             af_dict.update(nemo_files['./' + key])
 
         cb_override = BinaryContentCallback
-
         create_artifact(reg, key, False, content_callback=cb_override, **af_dict)
 
     logging.info(f"Retrieved artifacts: {artifacts.keys()}")
