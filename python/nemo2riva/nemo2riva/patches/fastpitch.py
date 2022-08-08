@@ -1,5 +1,6 @@
 import logging
 import sys
+from typing import Optional
 
 import nemo
 import torch
@@ -33,9 +34,9 @@ def create_batch(
     text: torch.Tensor,
     pitch: torch.Tensor,
     pace: torch.Tensor,
-    volume: torch.Tensor,
     batch_lengths: torch.Tensor,
     padding_idx: int = -1,
+    volume: Optional[torch.Tensor] = None,
 ):
     batch_lengths = batch_lengths.to(torch.int64)
     max_len = torch.max(batch_lengths[1:] - batch_lengths[:-1])
@@ -54,7 +55,8 @@ def create_batch(
         texts[index - 1, :cur_seq_len] = text[seq_start:seq_end]
         pitches[index - 1, :cur_seq_len] = pitch[seq_start:seq_end]
         paces[index - 1, :cur_seq_len] = pace[seq_start:seq_end]
-        volumes[index - 1, :cur_seq_len] = volume[seq_start:seq_end]
+        if volume is not None:
+            volumes[index - 1, :cur_seq_len] = volume[seq_start:seq_end]
 
         index += 1
 
@@ -72,6 +74,9 @@ def generate_vocab_mapping(model, artifacts, **kwargs):
             labels = model.vocab.tokens
         mapping = []
         for idx, token in enumerate(labels):
+            # Patch to remove emphasis from 22.08 TTS model
+            # if token == "[" or token == "]":
+            #     continue
             if not str.islower(token) and str.isalnum(token):
                 # token is ARPABET token, need to be prepended with @
                 token = '@' + token
@@ -114,9 +119,9 @@ def fastpitch_model_versioning(model, artifacts, **kwargs):
                     "text": NeuralType(('T'), TokenIndex()),
                     "pitch": NeuralType(('T'), RegressionValuesType()),
                     "pace": NeuralType(('T')),
-                    "speaker": NeuralType(('B'), Index(), optional=True),
                     "volume": NeuralType(('T'), optional=True),
                     "batch_lengths": NeuralType(('B'), optional=True),
+                    "speaker": NeuralType(('B'), Index(), optional=True),
                 }
                 self._output_types = {
                     "spect": NeuralType(('B', 'D', 'T_spec'), MelSpectrogramType()),
@@ -132,10 +137,10 @@ def fastpitch_model_versioning(model, artifacts, **kwargs):
             # Patch module's infer()
             def forward_for_export(self, text, pitch, pace, volume, batch_lengths, speaker=None):
                 text, pitch, pace, volume = create_batch(
-                    text, pitch, pace, volume, batch_lengths, padding_idx=self.fastpitch.encoder.padding_idx
+                    text, pitch, pace, batch_lengths, padding_idx=self.fastpitch.encoder.padding_idx, volume=volume
                 )
                 try:
-                    return self.fastpitch.infer(text=text, pitch=pitch, pace=pace, speaker=speaker, volume=volume)
+                    return self.fastpitch.infer(text=text, pitch=pitch, pace=pace, volume=volume, speaker=speaker)
                 except TypeError as e:
                     if 'volume' in str(e):
                         # NeMo version <= 1.9.0 when we don't return volume
@@ -148,17 +153,21 @@ def fastpitch_model_versioning(model, artifacts, **kwargs):
             model.__class__.forward_for_export = forward_for_export
 
             # Patch module's input_example()
-            def input_example(self, max_batch=1, max_dim=128):
+            def input_example(self, max_batch=1, max_dim=44):
                 par = next(self.fastpitch.parameters())
-                sz = max_batch * max_dim
+                sz = (max_batch * max_dim,)
                 inp = torch.randint(
-                    0, self.fastpitch.encoder.word_emb.num_embeddings, (sz,), device=par.device, dtype=torch.int64
+                    0, self.fastpitch.encoder.word_emb.num_embeddings, sz, device=par.device, dtype=torch.int64
                 )
-                pitch = torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.5
-                pace = torch.clamp(torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
-                volume = torch.clamp(torch.randn((sz,), device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
+                pitch = torch.randn(sz, device=par.device, dtype=torch.float32) * 0.5
+                pace = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
+
+                inputs = {'text': inp, 'pitch': pitch, 'pace': pace}
+
+                volume = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
+                inputs['volume'] = volume
                 batch_lengths = torch.zeros((max_batch + 1), device=par.device, dtype=torch.int32)
-                left_over_size = sz
+                left_over_size = sz[0]
                 batch_lengths[0] = 0
                 for i in range(1, max_batch):
                     length = torch.randint(1, left_over_size - (max_batch - i), (1,), device=par.device)
@@ -171,9 +180,8 @@ def fastpitch_model_versioning(model, artifacts, **kwargs):
                 while index < len(batch_lengths):
                     sum += batch_lengths[index] - batch_lengths[index - 1]
                     index += 1
-                assert sum == sz, f"sum: {sum}, sz: {sz}, lengths:{batch_lengths}"
-
-                inputs = {'text': inp, 'pitch': pitch, 'pace': pace, 'volume': volume, 'batch_lengths': batch_lengths}
+                assert sum == sz[0], f"sum: {sum}, sz: {sz[0]}, lengths:{batch_lengths}"
+                inputs['batch_lengths'] = batch_lengths
 
                 if self.fastpitch.speaker_emb is not None:
                     inputs['speaker'] = torch.randint(
