@@ -18,7 +18,7 @@ set -o xtrace
 RUNNER_GPUS=${RUNNER_GPUS:-1}
 THIS_DIR=$(cd $(dirname $0); pwd)
 RIVA_DIR=$(cd ${THIS_DIR}/../../..; pwd)
-NEMO_IMAGE_NAME=${NEMO_IMAGE_NAME:-nvcr.io/nvidia/nemo:22.04}
+NEMO_IMAGE_NAME=${NEMO_IMAGE_NAME:-nvcr.io/nvidia/nemo:22.05}
 UNIT_TEST_CONTAINER_NAME=${UNIT_TEST_CONTAINER_NAME:-nemo2riva-unit-test}
 DATADIR=${DATADIR:-/mnt/nvdl/datasets/}
 

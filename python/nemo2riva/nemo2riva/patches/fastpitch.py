@@ -7,6 +7,7 @@ import torch
 import wrapt
 import yaml
 from nemo.collections.tts.helpers.helpers import regulate_len
+from nemo.collections.tts.torch.tts_tokenizers import IPATokenizer
 from nemo.core.neural_types.elements import (
     Index,
     MelSpectrogramType,
@@ -63,28 +64,52 @@ def create_batch(
     return texts, pitches, paces, volumes
 
 
+def generate_vocab_mapping_arpabet(labels):
+    mapping = []
+    for idx, token in enumerate(labels):
+        # Patch to remove emphasis from 22.08 TTS model
+        # if token == "[" or token == "]":
+        #     continue
+        if not str.islower(token) and str.isalnum(token):
+            # token is ARPABET token, need to be prepended with @
+            token = '@' + token
+        mapping.append("{} {}".format(idx, token))
+        if str.islower(token) and str.isalnum(token):
+            # normal lowercase token, we want to create uppercase variant too
+            # since nemo preprocessing includes a .tolower
+            mapping.append("{} {}".format(idx, token.upper()))
+    return mapping
+
+
+def generate_vocab_mapping_ipa(labels):
+    # Only support English IPA dict
+    VALID_NON_ALNUM_IPA_TOKENS = ['ˈ', 'ˌ']
+    mapping = []
+    for idx, token in enumerate(labels):
+        if token in VALID_NON_ALNUM_IPA_TOKENS or (str.isalnum(token) and str.islower(token)):
+            # This is a phone
+            token = '@' + token
+        mapping.append("{} {}".format(idx, token))
+    return mapping
+
+
 def generate_vocab_mapping(model, artifacts, **kwargs):
     # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
     # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
     if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):
         logging.info("Adding mapping.txt for FastPitchModel instance to output file")
+        ipa_support = False
         if hasattr(model.vocab, "labels"):
             labels = model.vocab.labels
         else:
             labels = model.vocab.tokens
-        mapping = []
-        for idx, token in enumerate(labels):
-            # Patch to remove emphasis from 22.08 TTS model
-            # if token == "[" or token == "]":
-            #     continue
-            if not str.islower(token) and str.isalnum(token):
-                # token is ARPABET token, need to be prepended with @
-                token = '@' + token
-            mapping.append("{} {}".format(idx, token))
-            if str.islower(token) and str.isalnum(token):
-                # normal lowercase token, we want to create uppercase variant too
-                # since nemo preprocessing includes a .tolower
-                mapping.append("{} {}".format(idx, token.upper()))
+            if isinstance(model.vocab, IPATokenizer):
+                ipa_support = True
+
+        if ipa_support:
+            mapping = generate_vocab_mapping_ipa(labels)
+        else:
+            mapping = generate_vocab_mapping_arpabet(labels)
 
         mapping_txt = "\n".join(mapping).encode('utf-8')
 
