@@ -46,7 +46,6 @@ def Nemo2Riva(args):
         num_nodes=1,
         # Need to set the following two to False as ExpManager will take care of them differently.
         logger=False,
-        checkpoint_callback=False,
     )
     trainer = Trainer(cfg_trainer)
 

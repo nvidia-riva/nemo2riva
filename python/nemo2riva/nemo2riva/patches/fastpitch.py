@@ -67,9 +67,6 @@ def create_batch(
 def generate_vocab_mapping_arpabet(labels):
     mapping = []
     for idx, token in enumerate(labels):
-        # Patch to remove emphasis from 22.08 TTS model
-        # if token == "[" or token == "]":
-        #     continue
         if not str.islower(token) and str.isalnum(token):
             # token is ARPABET token, need to be prepended with @
             token = '@' + token
