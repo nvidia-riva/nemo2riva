@@ -1,0 +1,26 @@
+
+# Define required metadata fields expeced in the archive (optional).
+metadata:
+  - obj_cls: nemo.collections.tts.models.RadTTSModel
+  - min_nemo_version: 1.10
+
+# Define list of files that are expected (optional).
+artifact_properties:
+  # List of files.
+  - model_config.yaml
+  - model_graph.ts:
+      # Dictionary of expected properties (name:value) (optional).
+      onnx: False
+      autocast: False
+      encryption: False
+  - mapping.txt
+  # - cmudict-0.7b_nv22.01
+  # - heteronyms-030921
+
+# Define list of files with expected content (optional).
+# Functionality limited to yaml files (e.g. model_config.yaml).
+artifact_content:
+  # List of files.
+  - model_config.yaml:
+    # List of sections.subsections. ... that are required.
+
