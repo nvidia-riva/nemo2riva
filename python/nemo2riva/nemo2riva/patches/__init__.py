@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: MIT
+
 from .ctc import set_decoder_num_classes
 from .ctc_bpe import bpe_check_inputs_and_version
 from .fastpitch import fastpitch_model_versioning, generate_vocab_mapping

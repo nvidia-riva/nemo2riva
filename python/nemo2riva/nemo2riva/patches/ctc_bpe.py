@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: MIT
+
 import logging
 
 from nemo2riva.schema import check_nemo_version
