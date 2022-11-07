@@ -7,7 +7,14 @@ import torch
 import wrapt
 import yaml
 from nemo.collections.tts.helpers.helpers import regulate_len
-from nemo.collections.tts.torch.tts_tokenizers import IPATokenizer
+
+check_ipa_support = True
+try:
+    from nemo.collections.tts.torch.tts_tokenizers import IPATokenizer
+except Exception:
+    logging.info("IPATokenizer not found in NeMo, disabling support")
+    check_ipa_support = False
+
 from nemo.core.neural_types.elements import (
     Index,
     MelSpectrogramType,
@@ -100,8 +107,8 @@ def generate_vocab_mapping(model, artifacts, **kwargs):
             labels = model.vocab.labels
         else:
             labels = model.vocab.tokens
-            if isinstance(model.vocab, IPATokenizer):
-                ipa_support = True
+            if check_ipa_support:
+                ipa_support = isinstance(model.vocab, IPATokenizer)
 
         if ipa_support:
             mapping = generate_vocab_mapping_ipa(labels)
