@@ -8,4 +8,5 @@ patches = {
     "EncDecCTCModelBPE": [bpe_check_inputs_and_version],
     "MTEncDecModel": [change_tokenizer_names],
     "FastPitchModel": [generate_vocab_mapping, fastpitch_model_versioning],
+    "RadTTSModel": [generate_vocab_mapping],
 }
