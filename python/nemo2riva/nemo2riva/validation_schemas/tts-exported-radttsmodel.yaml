@@ -13,9 +13,9 @@ artifact_properties:
   - model_graph.ts:
       # Dictionary of expected properties (name:value) (optional).
       onnx: False
-      autocast: False
+      autocast: True
       encryption: False
-  - mapping.txt
+  # - mapping.txt
   # - cmudict-0.7b_nv22.01
   # - heteronyms-030921
 

@@ -10,7 +10,14 @@ import torch
 import wrapt
 import yaml
 from nemo.collections.tts.helpers.helpers import regulate_len
-from nemo.collections.tts.torch.tts_tokenizers import IPATokenizer
+
+check_ipa_support = True
+try:
+    from nemo.collections.tts.torch.tts_tokenizers import IPATokenizer
+except Exception:
+    logging.info("IPATokenizer not found in NeMo, disabling support")
+    check_ipa_support = False
+
 from nemo.core.neural_types.elements import (
     Index,
     MelSpectrogramType,
@@ -96,30 +103,36 @@ def generate_vocab_mapping_ipa(labels):
 def generate_vocab_mapping(model, artifacts, **kwargs):
     # TODO Hack to add labels from FastPitch to .riva since that file is not inside the .nemo
     # Task tracked at https://jirasw.nvidia.com/browse/JARS-1169
-    if model.__class__.__name__ == 'FastPitchModel' and hasattr(model, 'vocab'):
-        logging.info("Adding mapping.txt for FastPitchModel instance to output file")
-        ipa_support = False
-        if hasattr(model.vocab, "labels"):
-            labels = model.vocab.labels
-        else:
-            labels = model.vocab.tokens
-            if isinstance(model.vocab, IPATokenizer):
-                ipa_support = True
+    ipa_support = False
+    if hasattr(model, "vocab"):
+        model_vocab = model.vocab
+    elif hasattr(model, "tokenizer"):
+        model_vocab = model.tokenizer
+    else:
+        logging.error("Neither vocab nor tokenizer found!")
+        return
+    logging.info("Adding mapping.txt to output file")
+    if hasattr(model_vocab, "labels"):
+        labels = model_vocab.labels
+    else:
+        labels = model_vocab.tokens
+        if check_ipa_support:
+            ipa_support = isinstance(model_vocab, IPATokenizer)
 
-        if ipa_support:
-            mapping = generate_vocab_mapping_ipa(labels)
-        else:
-            mapping = generate_vocab_mapping_arpabet(labels)
+    if ipa_support:
+        mapping = generate_vocab_mapping_ipa(labels)
+    else:
+        mapping = generate_vocab_mapping_arpabet(labels)
 
-        mapping_txt = "\n".join(mapping).encode('utf-8')
+    mapping_txt = "\n".join(mapping).encode('utf-8')
 
-        content = {
-            "description": "mapping file for FastPitch",
-            "path_type": "TAR_PATH",
-            "nemo_artifact": True,
-            "content": mapping_txt,
-        }
-        artifacts["mapping.txt"] = content
+    content = {
+        "description": "mapping file",
+        "path_type": "TAR_PATH",
+        "nemo_artifact": True,
+        "content": mapping_txt,
+    }
+    artifacts["mapping.txt"] = content
 
 
 def fastpitch_model_versioning(model, artifacts, **kwargs):

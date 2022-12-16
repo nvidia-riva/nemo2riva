@@ -4,6 +4,7 @@
 import gc
 import os
 import sys
+import tarfile
 import tempfile
 
 import onnx
@@ -50,7 +51,8 @@ def export_model(model, cfg, args, artifacts, metadata):
     metadata.update({"runtime": runtime})
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        export_file = os.path.join(tmpdir, cfg.export_file)
+        export_filename = cfg.export_file
+        export_file = os.path.join(tmpdir, export_filename)
 
         if cfg.export_format in ["ONNX", "TS"]:
             # Export the model, get the descriptions.
@@ -64,10 +66,10 @@ def export_model(model, cfg, args, artifacts, metadata):
             )
             try:
                 autocast = torch.cuda.amp.autocast if cfg.autocast else nullcontext
-                with autocast(), torch.inference_mode():
+                with autocast(), torch.no_grad(), torch.inference_mode():
                     logging.info(f"Exporting model {model.__class__.__name__} with config={cfg}")
                     model = model.to(device=args.device)
-                    model.eval()
+                    model.freeze()
                     in_args = {}
                     if args.max_batch is not None:
                         in_args["max_batch"] = args.max_batch
@@ -83,12 +85,36 @@ def export_model(model, cfg, args, artifacts, metadata):
                         onnx_opset_version=args.onnx_opset,
                         verbose=args.verbose,
                     )
+                    del model
                 if cfg.export_format == 'ONNX':
+                    o_list = os.listdir(tmpdir)
+                    save_as_external_data = len(o_list) > 1
+                    # fold-constants part
                     model_onnx = onnx.load_model(export_file)
                     graph = gs.import_onnx(model_onnx)
                     graph.fold_constants().cleanup()
                     model_onnx = gs.export_onnx(graph)
-                    onnx.save_model(model_onnx, export_file)
+                    # remove bits of original .onnx
+                    for f in o_list:
+                        os.unlink(os.path.join(tmpdir, f))
+                    onnx.save_model(
+                        model_onnx,
+                        export_file,
+                        save_as_external_data=save_as_external_data,
+                        all_tensors_to_one_file=False,
+                    )
+                    del model_onnx
+                    if save_as_external_data:
+                        o_list = os.listdir(tmpdir)
+                        export_file = export_file + '.tar'
+                        logging.info(
+                            f"Large (>2GB) ONNX is being exported with external weights, as {export_filename} TAR archive!"
+                        )
+                        with tarfile.open(export_file, "w") as tar:
+                            for f in o_list:
+                                fpath = os.path.join(tmpdir, f)
+                                tar.add(fpath, f)
+
             except RuntimeError as e:
                 if "max_dim" in in_args and "CUDA out of memory" in str(e):
                     raise CudaOOMInExportOfASRWithMaxDim(max_dim=in_args['max_dim'])
@@ -107,7 +133,7 @@ def export_model(model, cfg, args, artifacts, metadata):
 
         create_artifact(
             artifacts,
-            cfg.export_file,
+            export_filename,
             do_encrypt=cfg.encryption,
             filepath=export_file,
             description="Exported model",
