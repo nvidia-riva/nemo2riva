@@ -24,7 +24,7 @@ setup_py_dir = Path(__file__).parent.absolute()
 
 
 def get_version():
-    version_file = setup_py_dir / ".." / ".." / "VERSION"
+    version_file = setup_py_dir / "VERSION"
     versions = open(version_file, "r").readlines()
     version = "devel"
     for v in versions:
@@ -42,7 +42,7 @@ setup(
     install_requires=install_requirements,
     packages=packages,
     name="nemo2riva",
-    python_requires=">=3.6.0",
+    python_requires=">=3.7.0",
     include_package_data=True,
     package_dir={"nemo2riva": "nemo2riva"},
     package_data={"nemo2riva": ["validation_schemas/*.yaml"]},
