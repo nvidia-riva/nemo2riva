@@ -4,7 +4,6 @@
 import os
 import tarfile
 import traceback
-from logging import exception
 from typing import Optional
 
 import yaml
@@ -109,7 +108,7 @@ def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs
             "modules. Please ensure that nemo_toolkit and it's dependencies are all installed "
             "before re-running nemo2riva."
         )
-        if isinstance(_HAVE_PATCHES_ERROR_MSG, exception):
+        if isinstance(_HAVE_PATCHES_ERROR_MSG, Exception):
             raise _HAVE_PATCHES_ERROR_MSG
         else:
             raise ModuleNotFoundError
