@@ -20,28 +20,26 @@ install_requirements = [
 
 packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches"]
 
-setup_py_dir = Path(__file__).parent.absolute()
 
-
-def get_version():
-    version_file = setup_py_dir / "VERSION"
-    versions = open(version_file, "r").readlines()
-    version = "devel"
-    for v in versions:
-        if v.startswith("RIVA_VERSION: "):
-            version = v[len("RIVA_VERSION: ") :].strip()
-    return version
+__author_email__ = "nvidia-riva@nvidia.com"
+__contact_emails__ = "nvidia-riva@nvidia.com"
+__contact_names__ = "NVIDIA Riva"
+__description__ = ("NeMo Model => Riva Deployment Converter",)
+__license__ = "MIT"
+__package_name__ = "nemo2riva"
+__version__ = "2.9.0-dev"
 
 
 setup(
-    description="NeMo Model => Riva Deployment Converter",
-    author="NVIDIA",
-    author_email="nvidia.com",
-    version=get_version(),
+    description=__description__,
+    author=__contact_names__,
+    author_email=__author_email__,
+    version=__version__,
+    license=__license__,
     setup_requires="nvidia-pyindex",
     install_requires=install_requirements,
     packages=packages,
-    name="nemo2riva",
+    name=__package_name__,
     python_requires=">=3.7.0",
     include_package_data=True,
     package_dir={"nemo2riva": "nemo2riva"},
