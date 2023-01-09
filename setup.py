@@ -27,7 +27,7 @@ __contact_names__ = "NVIDIA Riva"
 __description__ = ("NeMo Model => Riva Deployment Converter",)
 __license__ = "MIT"
 __package_name__ = "nemo2riva"
-__version__ = get_version()
+__version__ = "2.9.0-dev"
 
 
 setup(
@@ -35,6 +35,7 @@ setup(
     author=__contact_names__,
     author_email=__author_email__,
     version=__version__,
+    license=__license__,
     setup_requires="nvidia-pyindex",
     install_requires=install_requirements,
     packages=packages,
