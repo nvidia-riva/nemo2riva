@@ -65,8 +65,8 @@ def export_model(model, cfg, args, artifacts, metadata):
                 "you have the latest NeMo package installed with [all] dependencies.".format(model.__class__)
             )
             try:
-                autocast = torch.cuda.amp.autocast if cfg.autocast else nullcontext
-                with autocast(), torch.no_grad(), torch.inference_mode():
+                autocast = torch.cuda.amp.autocast(enabled=True, cache_enabled=False, dtype=torch.float16) if cfg.autocast else nullcontext()
+                with autocast, torch.no_grad(), torch.inference_mode():
                     logging.info(f"Exporting model {model.__class__.__name__} with config={cfg}")
                     model = model.to(device=args.device)
                     model.freeze()
