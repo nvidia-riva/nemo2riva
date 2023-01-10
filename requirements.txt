@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+argsparse
+nemo_toolkit>=1.13
+nvidia-eff>=0.5.3,<=0.6.2
+onnxruntime>=1.13.1
+onnx_graphsurgeon

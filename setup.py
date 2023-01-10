@@ -10,16 +10,13 @@ from pathlib import Path
 from setuptools import Extension, setup
 
 install_requirements = [
-    "isort<5.0",
-    "nemo_toolkit>=1.0.0",
+    "nemo_toolkit>=1.13",
     "nvidia-eff>=0.5.3,<=0.6.2",
-    "onnxruntime>=1.9",
+    "onnxruntime-gpu>=1.13.1",
     "onnx_graphsurgeon",
-    "packaging",
 ]
 
-packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches"]
-
+packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches", "nemo2riva.validation_schemas"]
 
 __author_email__ = "nvidia-riva@nvidia.com"
 __contact_emails__ = "nvidia-riva@nvidia.com"
@@ -36,7 +33,6 @@ setup(
     author_email=__author_email__,
     version=__version__,
     license=__license__,
-    setup_requires="nvidia-pyindex",
     install_requires=install_requirements,
     packages=packages,
     name=__package_name__,
