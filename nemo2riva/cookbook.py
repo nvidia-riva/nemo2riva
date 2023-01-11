@@ -77,7 +77,6 @@ def export_model(model, cfg, args, artifacts, metadata):
                         in_args["max_dim"] = cfg.max_dim
 
                     input_example = model.input_module.input_example(**in_args)
-
                     _, descriptions = model.export(
                         export_file,
                         input_example=input_example,

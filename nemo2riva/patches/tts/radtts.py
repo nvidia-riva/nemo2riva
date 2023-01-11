@@ -45,7 +45,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 # Define input_types and output_types as required by export()
                 self._input_types = {
                     "text": NeuralType(('B', 'T'), TokenIndex()),
-                    "len": NeuralType(('B')),
+                    "lens": NeuralType(('B')),
                     # "batch_lengths": NeuralType(('B'), LengthsType(), optional=True),
                     "speaker_id": NeuralType(('B'), Index()),
                     "speaker_id_text": NeuralType(('B'), Index()),
@@ -143,9 +143,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 if dur is None:
                     # get token durations
-                    z_dur = txt_enc.new_zeros((batch_size, 1, n_tokens), dtype=torch.float)
-                    z_dur = torch.normal(z_dur) * sigma_txt
-                    dur = self.dur_pred_layer.infer(z_dur, txt_enc, spk_vec_text, lens=in_lens)
+                    dur = self.dur_pred_layer.infer(txt_enc, spk_vec_text, lens=in_lens)
                     dur = pad_dur(dur, txt_enc)
                     dur = dur[:, 0]
                     dur = dur.clamp(0, token_duration_max)
@@ -164,7 +162,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     if self.use_vpred_module:
                         # get logits
                         voiced_mask = self.v_pred_module.infer(
-                            None, txt_enc_time_expanded, spk_vec_attributes, lens=out_lens
+                            txt_enc_time_expanded, spk_vec_attributes, lens=out_lens
                         )
                         voiced_mask_bool = torch.sigmoid(voiced_mask[:, 0]) > 0.5
                         voiced_mask = voiced_mask_bool.to(dur.dtype)
@@ -184,8 +182,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 if f0 is None:
                     n_f0_feature_channels = 2 if self.use_first_order_features else 1
-                    z_f0 = torch.normal(txt_enc.new_zeros(batch_size, n_f0_feature_channels, max_out_len)) * sigma_f0
-                    f0 = self.infer_f0(z_f0, ap_txt_enc_time_expanded, spk_vec_attributes, voiced_mask_bool, out_lens)[
+                    f0 = self.infer_f0(ap_txt_enc_time_expanded, spk_vec_attributes, voiced_mask_bool, out_lens)[
                         :, 0
                     ]
 
@@ -193,11 +190,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 if energy_avg is None:
                     n_energy_feature_channels = 2 if self.use_first_order_features else 1
-                    z_energy_avg = (
-                        torch.normal(txt_enc.new_zeros(batch_size, n_energy_feature_channels, max_out_len))
-                        * sigma_energy
-                    )
-                    energy_avg = self.infer_energy(z_energy_avg, ap_txt_enc_time_expanded, spk_vec, out_lens)[:, 0]
+                    energy_avg = self.infer_energy(ap_txt_enc_time_expanded, spk_vec, out_lens)[:, 0]
 
                 # replication pad, because ungrouping with different group sizes
                 # may lead to mismatched lengths
@@ -282,7 +275,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 inputs = {
                     'text': inp,
-                    'len': lens,
+                    'lens': lens,
                     # 'batch_lengths': batch_lengths,
                     'speaker_id': speaker,
                     'speaker_id_text': speaker,
