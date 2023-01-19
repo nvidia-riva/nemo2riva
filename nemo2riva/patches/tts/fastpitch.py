@@ -16,7 +16,7 @@ from nemo.core.neural_types.elements import (
 from nemo.core.neural_types.neural_type import NeuralType
 from packaging.version import Version
 
-from .general import create_batch
+from nemo2riva.patches.tts.general import create_batch
 
 # Note: No need to mock as we don't support nemo2riva in our servicemaker container. Nemo2riva
 #       should be done inside the NeMo training container.

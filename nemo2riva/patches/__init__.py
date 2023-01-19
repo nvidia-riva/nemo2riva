@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: MIT
 
-from .ctc import set_decoder_num_classes
-from .ctc_bpe import bpe_check_inputs_and_version
-from .mtencdec import change_tokenizer_names
-from .tts import fastpitch_model_versioning, generate_vocab_mapping, radtts_model_versioning
+from nemo2riva.patches.ctc import set_decoder_num_classes
+from nemo2riva.patches.ctc_bpe import bpe_check_inputs_and_version
+from nemo2riva.patches.mtencdec import change_tokenizer_names
+from nemo2riva.patches.tts import fastpitch_model_versioning, generate_vocab_mapping, radtts_model_versioning
 
 patches = {
     "EncDecCTCModel": [set_decoder_num_classes],

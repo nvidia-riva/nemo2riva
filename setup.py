@@ -16,8 +16,6 @@ install_requirements = [
     "onnx_graphsurgeon",
 ]
 
-packages = ["nemo2riva", "nemo2riva.cli", "nemo2riva.patches", "nemo2riva.validation_schemas"]
-
 __author_email__ = "nvidia-riva@nvidia.com"
 __contact_emails__ = "nvidia-riva@nvidia.com"
 __contact_names__ = "NVIDIA Riva"
@@ -34,7 +32,7 @@ setup(
     version=__version__,
     license=__license__,
     install_requires=install_requirements,
-    packages=packages,
+    packages=setuptools.find_packages(),
     name=__package_name__,
     python_requires=">=3.7.0",
     include_package_data=True,

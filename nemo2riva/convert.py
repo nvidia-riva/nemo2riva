@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from typing import Optional
 
 import torch
-from nemo2riva.artifacts import get_artifacts
-from nemo2riva.cookbook import export_model, save_archive
-from nemo2riva.schema import get_import_config, get_subnet, validate_archive
 from nemo.core import ModelPT
-
 from nemo.core.config.pytorch_lightning import TrainerConfig
 from nemo.utils import logging
 from pytorch_lightning import Trainer
+
+from nemo2riva.artifacts import get_artifacts
+from nemo2riva.cookbook import export_model, save_archive
+from nemo2riva.schema import get_import_config, get_subnet, validate_archive
 
 
 def Nemo2Riva(args):
