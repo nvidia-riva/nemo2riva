@@ -18,7 +18,7 @@ from nemo.core.neural_types.elements import (
 from nemo.core.neural_types.neural_type import NeuralType
 from packaging.version import Version
 
-from .general import create_batch
+from nemo2riva.patches.tts.general import create_batch
 
 
 def radtts_model_versioning(model, artifacts, **kwargs):
