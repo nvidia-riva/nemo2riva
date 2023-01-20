@@ -6,8 +6,7 @@ import subprocess
 from distutils import cmd as distutils_cmd
 from distutils import log as distutils_log
 from pathlib import Path
-
-from setuptools import Extension, setup
+import setuptools
 
 install_requirements = [
     "nemo_toolkit>=1.13",
@@ -25,7 +24,7 @@ __package_name__ = "nemo2riva"
 __version__ = "2.9.0"
 
 
-setup(
+setuptools.setup(
     description=__description__,
     author=__contact_names__,
     author_email=__author_email__,
