@@ -5,21 +5,10 @@ import random
 import nemo
 import torch
 import yaml
-from nemo.collections.tts.helpers.helpers import regulate_len
-from nemo.collections.tts.modules.radtts import RadTTSModule, adjust_f0, pad_dur, pad_energy_avg_and_f0
-from nemo.core.neural_types.elements import (
-    Index,
-    LengthsType,
-    MelSpectrogramType,
-    RegressionValuesType,
-    TokenDurationType,
-    TokenIndex,
-)
 from nemo.core.neural_types.neural_type import NeuralType
 from packaging.version import Version
 
 from nemo2riva.patches.tts.general import create_batch
-
 
 def radtts_model_versioning(model, artifacts, **kwargs):
     # Riva supports some additional features over NeMo radtts models depending on the version
@@ -34,6 +23,16 @@ def radtts_model_versioning(model, artifacts, **kwargs):
         # If can't find the nemo version, return without patching
         return None
     if model.__class__.__name__ == 'RadTTSModel':
+        from nemo.collections.tts.helpers.helpers import regulate_len
+        from nemo.collections.tts.modules.radtts import RadTTSModule, adjust_f0, pad_dur, pad_energy_avg_and_f0
+        from nemo.core.neural_types.elements import (
+            Index,
+            LengthsType,
+            MelSpectrogramType,
+            RegressionValuesType,
+            TokenDurationType,
+            TokenIndex,
+        )
         if nemo_version < Version('1.16.0'):
             # If nemo_version is less than 1.16, we need to add all supports
             # 1.16 is a placeholder, will finalize once these changes are merged into NeMo

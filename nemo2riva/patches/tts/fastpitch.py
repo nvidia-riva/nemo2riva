@@ -18,17 +18,6 @@ from packaging.version import Version
 
 from nemo2riva.patches.tts.general import create_batch
 
-# Note: No need to mock as we don't support nemo2riva in our servicemaker container. Nemo2riva
-#       should be done inside the NeMo training container.
-# # fmt: off
-# # Need to mock pillow as we uninstall pillow in our docker
-# # All import pillow calls are from `import matplotlib` and since nemo2riva doesn't use matplotlib, we should be safe to just mock it
-# from mock import MagicMock
-# sys.modules["PIL"] = MagicMock()
-# sys.modules["PIL.PngImagePlugin"] = MagicMock()
-# # fmt: on
-
-
 def fastpitch_model_versioning(model, artifacts, **kwargs):
     # Riva supports some additional features over NeMo fastpitch models depending on the version
     # Namely, we need to patch in volume support and ragged batched support for lower NeMo versions
