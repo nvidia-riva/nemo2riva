@@ -7,7 +7,7 @@ from distutils import cmd as distutils_cmd
 from distutils import log as distutils_log
 from pathlib import Path
 
-from setuptools import Extension, setup
+from setuptools import setup, find_packages
 
 install_requirements = [
     "nemo_toolkit>=1.13",
@@ -32,7 +32,7 @@ setup(
     version=__version__,
     license=__license__,
     install_requires=install_requirements,
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     name=__package_name__,
     python_requires=">=3.7.0",
     include_package_data=True,
