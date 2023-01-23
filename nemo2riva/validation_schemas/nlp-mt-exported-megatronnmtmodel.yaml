@@ -1,0 +1,42 @@
+
+# Define required metadata fields expeced in the archive (optional).
+metadata:
+  - obj_cls: nemo.collections.nlp.models.MegatronNMTModel
+  - autocast: True
+
+
+# Define list of files that are expected (optional).
+artifact_properties:
+  # List of files.
+  - model_config.yaml
+  - encoder_model_graph.onnx:
+    # Dictionary of expected properties (name:value) (optional).
+      onnx: True
+      export_subnet: encoder
+  - decoder_model_graph.onnx:
+      export_subnet: decoder
+      onnx: True
+  - log_softmax_model_graph.onnx:
+      export_subnet: log_softmax
+      onnx: True
+  # Tokenizers
+  - encoder_tokenizer.model
+  - decoder_tokenizer.model
+
+# Define list of files with expected content (optional).
+# Functionality limited to yaml files (e.g. model_config.yaml).
+artifact_content:
+  # List of files.
+  - model_config.yaml:
+    # List of sections.subsections. ... that are required.
+    # (Optional `: True` instructs to check the presence of the file in indicated as leaf in the archive)
+    - multilingual
+    - src_language
+    - tgt_language
+    - encoder.num_layers
+    - encoder.pre_ln
+    - encoder.hidden_size
+    - encoder_tokenizer.library
+    - decoder.num_layers
+    - decoder.pre_ln
+    - decoder_tokenizer.library
