@@ -32,9 +32,12 @@ artifact_content:
     # List of sections.subsections. ... that are required.
     # (Optional `: True` instructs to check the presence of the file in indicated as leaf in the archive)
     - multilingual
+    - src_language
+    - tgt_language
     - encoder.num_layers
     - encoder.pre_ln
     - encoder_tokenizer.library
+    - encoder.hidden_size
     - decoder.num_layers
     - decoder.pre_ln
     - decoder_tokenizer.library
