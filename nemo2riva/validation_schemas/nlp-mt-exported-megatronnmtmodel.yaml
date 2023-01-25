@@ -3,7 +3,8 @@
 
 # Define required metadata fields expeced in the archive (optional).
 metadata:
-  - obj_cls: nemo.collections.nlp.models.MTEncDecModel
+  - obj_cls: nemo.collections.nlp.models.MegatronNMTModel
+  - autocast: True
 
 
 # Define list of files that are expected (optional).
@@ -36,8 +37,8 @@ artifact_content:
     - tgt_language
     - encoder.num_layers
     - encoder.pre_ln
-    - encoder_tokenizer.library
     - encoder.hidden_size
+    - encoder_tokenizer.library
     - decoder.num_layers
     - decoder.pre_ln
     - decoder_tokenizer.library
