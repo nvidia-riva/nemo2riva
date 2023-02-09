@@ -89,21 +89,24 @@ def export_model(model, cfg, args, artifacts, metadata):
                 if cfg.export_format == 'ONNX':
                     o_list = os.listdir(tmpdir)
                     save_as_external_data = len(o_list) > 1
-                    # fold-constants part
-                    model_onnx = onnx.load_model(export_file)
-                    graph = gs.import_onnx(model_onnx)
-                    graph.fold_constants().cleanup()
-                    model_onnx = gs.export_onnx(graph)
-                    # remove bits of original .onnx
-                    for f in o_list:
-                        os.unlink(os.path.join(tmpdir, f))
-                    onnx.save_model(
-                        model_onnx,
-                        export_file,
-                        save_as_external_data=save_as_external_data,
-                        all_tensors_to_one_file=False,
-                    )
-                    del model_onnx
+                    try:
+                        # fold-constants part
+                        model_onnx = onnx.load_model(export_file)
+                        graph = gs.import_onnx(model_onnx)
+                        graph.fold_constants().cleanup()
+                        model_onnx = gs.export_onnx(graph)
+                        # remove bits of original .onnx
+                        for f in o_list:
+                            os.unlink(os.path.join(tmpdir, f))
+                            onnx.save_model(
+                                model_onnx,
+                                export_file,
+                                save_as_external_data=save_as_external_data,
+                                all_tensors_to_one_file=False,
+                            )
+                        del model_onnx
+                    except Exception:
+                        pass
                     if save_as_external_data:
                         o_list = os.listdir(tmpdir)
                         export_file = export_file + '.tar'
