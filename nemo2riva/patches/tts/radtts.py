@@ -33,7 +33,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
             TokenDurationType,
             TokenIndex,
         )
-        if nemo_version < Version('1.16.0') and not hasattr(self, "export_config"):
+        if nemo_version < Version('1.16.0') and not hasattr(model, "export_config"):
             # If nemo_version is less than 1.16, we need to add all supports
             # 1.16 is a placeholder, will finalize once these changes are merged into NeMo
 
@@ -286,6 +286,12 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 return (inputs,)
 
             RadTTSModule.input_example = input_example
+        else:
+            # NeMo version >= 1.15.0; can just set the relevant flags
+            model.export_config["enable_volume"] = True
+            model.export_config["enable_ragged_batches"] = False
+            # TJ
+            model.model.v_pred_threshold = 0.443
 
     # Patch the model config yaml to add the volume and ragged batch flags
     for art in artifacts:
