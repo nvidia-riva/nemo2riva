@@ -26,7 +26,7 @@ def get_args(argv):
     )
     parser.add_argument("--max-batch", type=int, default=None, help="Max batch size for model export")
     parser.add_argument("--max-dim", type=int, default=None, help="Max dimension(s) for model export")
-    parser.add_argument("--onnx-opset", type=int, default=None, help="ONNX opset for model export")
+    parser.add_argument("--onnx-opset", type=int, default=14, help="ONNX opset for model export")
     parser.add_argument("--device", default="cuda", help="Device to export for")
     parser.add_argument("--export-subnet", default=None, help="Export specified subnetwork/layer")
 
