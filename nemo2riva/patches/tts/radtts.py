@@ -33,14 +33,12 @@ def radtts_model_versioning(model, artifacts, **kwargs):
             TokenDurationType,
             TokenIndex,
         )
-        if nemo_version < Version('1.16.0'):
-            # If nemo_version is less than 1.16, we need to add all supports
-            # 1.16 is a placeholder, will finalize once these changes are merged into NeMo
+        if nemo_version < Version('1.17.0') and not hasattr(model, "export_config"):
+            # If nemo_version is less than 1.17, we need to add all supports
 
             # Patch model's _prepare_for_export()
             def _prepare_for_export(self, **kwargs):
                 super(model.__class__, model)._prepare_for_export(**kwargs)
-
                 # Define input_types and output_types as required by export()
                 self._input_types = {
                     "text": NeuralType(('B', 'T'), TokenIndex()),
@@ -83,8 +81,8 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     text,
                     speaker_id_text=speaker_id_text,
                     speaker_id_attributes=speaker_id_attributes,
-                    sigma=0.0,
-                    sigma_txt=0.0,
+                    sigma=0.7,
+                    sigma_txt=0.7,
                     sigma_f0=1.0,
                     sigma_energy=1.0,
                     f0_mean=0.0,
@@ -97,9 +95,23 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 # Need to reshape as in infer patch
                 durs_predicted = dur.float()
                 truncated_length = torch.max(lens)
-                volume_extended, _ = regulate_len(
-                    durs_predicted, volume[:, :truncated_length].unsqueeze(-1), pace[:, :truncated_length]
-                )
+                try:
+                    # Use NeMo 1.16's function signature if possible
+                    volume_extended, _ = regulate_len(
+                        durs_predicted,
+                        volume[:, :truncated_length].unsqueeze(-1),
+                        pace[:, :truncated_length],
+                        replicate_to_nearest_multiple=True,
+                        group_size=self.model.n_group_size,
+                        in_lens=lens,
+                    )
+                except TypeError as e:
+                    # Else, default to NeMo 1.15's function signature
+                    volume_extended, _ = regulate_len(
+                        durs_predicted,
+                        volume[:, :truncated_length].unsqueeze(-1),
+                        pace[:, :truncated_length]
+                    )
                 volume_extended = volume_extended.squeeze(-1).float()
                 return mel.float(), n_frames, dur.float(), volume_extended
 
@@ -109,13 +121,13 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 self,
                 speaker_id,
                 text,
-                sigma,
-                sigma_txt=0.8,
-                sigma_f0=0.8,
-                sigma_energy=0.8,
+                sigma=0.7,
+                sigma_txt=0.7,
+                sigma_f0=1.0,
+                sigma_energy=1.0,
                 speaker_id_text=None,
                 speaker_id_attributes=None,
-                pace=1.0,
+                pace=None,
                 token_duration_max=100,
                 in_lens=None,
                 dur=None,
@@ -128,10 +140,16 @@ def radtts_model_versioning(model, artifacts, **kwargs):
             ):
 
                 batch_size = text.shape[0]
-                n_tokens = text.shape[1]
                 if in_lens is None:
-                    in_lens = text.new_ones((batch_size,), dtype=torch.int) * n_tokens
+                    in_lens = text.new_ones((batch_size,), dtype=torch.int64) * text.shape[1]
+                    txt_len_pad_removed = text.shape[1]
+                else:
+                    txt_len_pad_removed = torch.max(in_lens)
+                    # borisf : this should not be needed as long as we have properly formed input batch
+                    text = text[:, :txt_len_pad_removed]
+
                 spk_vec = self.encode_speaker(speaker_id)
+
                 if speaker_id_text is None:
                     speaker_id_text = speaker_id
                 if speaker_id_attributes is None:
@@ -146,13 +164,24 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     dur = pad_dur(dur, txt_enc)
                     dur = dur[:, 0]
                     dur = dur.clamp(0, token_duration_max)
-                # text encoded removes padding tokens so shape of text_enc is changed
-                # need to adjust pace, pitch_shift to account for this
-                txt_len_pad_removed = torch.max(in_lens)
-                pace = pace[:, :txt_len_pad_removed]
-                pitch_shift = pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1)
 
-                txt_enc_time_expanded, out_lens = regulate_len(dur, txt_enc.transpose(1, 2), pace)
+                if pace is None:
+                    pace = txt_enc.new_ones((batch_size, txt_len_pad_removed))
+                else:
+                    pace = pace[:, :txt_len_pad_removed]
+
+                try:
+                    txt_enc_time_expanded, out_lens = regulate_len(
+                        dur,
+                        txt_enc.transpose(1, 2),
+                        pace,
+                        group_size=self.n_group_size,
+                        dur_lens=in_lens,
+                    )
+                except TypeError as e:
+                    txt_enc_time_expanded, out_lens = regulate_len(
+                        dur, txt_enc.transpose(1, 2), pace
+                    )
                 n_groups = torch.div(out_lens, self.n_group_size, rounding_mode='floor')
                 max_out_len = torch.max(out_lens)
 
@@ -160,11 +189,11 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 if voiced_mask is None:
                     if self.use_vpred_module:
                         # get logits
-                        voiced_mask = self.v_pred_module.infer(
-                            txt_enc_time_expanded, spk_vec_attributes, lens=out_lens
-                        )
+                        voiced_mask = self.v_pred_module.infer(txt_enc_time_expanded, spk_vec_attributes, lens=out_lens)
                         voiced_mask_bool = torch.sigmoid(voiced_mask[:, 0]) > 0.5
                         voiced_mask = voiced_mask_bool.to(dur.dtype)
+                    else:
+                        voiced_mask_bool = None
                 else:
                     voiced_mask_bool = voiced_mask.bool()
 
@@ -180,15 +209,11 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     f0_bias = -f0_bias[..., 0]
 
                 if f0 is None:
-                    n_f0_feature_channels = 2 if self.use_first_order_features else 1
-                    f0 = self.infer_f0(ap_txt_enc_time_expanded, spk_vec_attributes, voiced_mask_bool, out_lens)[
-                        :, 0
-                    ]
+                    f0 = self.infer_f0(ap_txt_enc_time_expanded, spk_vec_attributes, voiced_mask_bool, out_lens)[:, 0]
 
                 f0 = adjust_f0(f0, f0_mean, f0_std, voiced_mask_bool)
 
                 if energy_avg is None:
-                    n_energy_feature_channels = 2 if self.use_first_order_features else 1
                     energy_avg = self.infer_energy(ap_txt_enc_time_expanded, spk_vec, out_lens)[:, 0]
 
                 # replication pad, because ungrouping with different group sizes
@@ -196,26 +221,36 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 # FIXME: use replication pad
                 (energy_avg, f0) = pad_energy_avg_and_f0(energy_avg, f0, max_out_len)
 
-                pitch_shift_spec_len = 0
                 if pitch_shift is not None:
-                    pitch_shift_spec_len, _ = regulate_len(dur, pitch_shift, pace)
-                    pitch_shift_spec_len = pitch_shift_spec_len.squeeze(-1)
+                    try:
+                        pitch_shift_spec_len, _ = regulate_len(
+                            dur,
+                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
+                            pace,
+                            group_size=self.n_group_size,
+                            dur_lens=in_lens,
+                        )
+                    except TypeError as e:
+                        pitch_shift_spec_len, _ = regulate_len(
+                            dur,
+                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
+                            pace,
+                        )
+                    f0_bias = pitch_shift_spec_len.squeeze(-1) + f0_bias
 
                 context_w_spkvec = self.preprocess_context(
-                    txt_enc_time_expanded,
-                    spk_vec,
-                    out_lens,
-                    (f0 + f0_bias + pitch_shift_spec_len) * voiced_mask,
-                    energy_avg,
+                    txt_enc_time_expanded, spk_vec, out_lens, (f0 + f0_bias) * voiced_mask, energy_avg, assume_padded=True,
                 )
 
-                residual = (
-                    torch.normal(txt_enc.new_zeros(batch_size, 80 * self.n_group_size, torch.max(n_groups))) * sigma
-                )
+                residual = txt_enc.new_zeros(batch_size, 80 * self.n_group_size, torch.max(n_groups))
+                if sigma > 0.0:
+                    residual = torch.normal(residual) * sigma
 
                 # map from z sample to data
                 num_steps_to_exit = len(self.exit_steps)
-                remaining_residual, mel = torch.tensor_split(residual, [num_steps_to_exit * self.n_early_size,], dim=1)
+                split = num_steps_to_exit * self.n_early_size
+                mel = residual[:, split:]
+                residual = residual[:, :split]
 
                 for i, flow_step in enumerate(reversed(self.flows)):
                     curr_step = self.n_flows - i - 1
@@ -223,9 +258,9 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     if num_steps_to_exit > 0 and curr_step == self.exit_steps[num_steps_to_exit - 1]:
                         # concatenate the next chunk of z
                         num_steps_to_exit = num_steps_to_exit - 1
-                        remaining_residual, residual_to_add = torch.tensor_split(
-                            remaining_residual, [num_steps_to_exit * self.n_early_size,], dim=1
-                        )
+                        split = num_steps_to_exit * self.n_early_size
+                        residual_to_add = residual[:, split:]
+                        residual = residual[:, :split]
                         mel = torch.cat((residual_to_add, mel), 1)
 
                 if self.n_group_size > 1:
@@ -240,7 +275,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 par = next(self.parameters())
                 sz = (max_batch, max_dim)
                 # sz = (max_batch * max_dim,)
-                inp = torch.randint(0, 94, sz, device=par.device, dtype=torch.int64)
+                inp = torch.randint(32, 94, sz, device=par.device, dtype=torch.int64)
                 speaker = torch.randint(0, 1, (max_batch,), device=par.device, dtype=torch.int64)
                 pitch = torch.randn(sz, device=par.device, dtype=torch.float32) * 0.5
                 pace = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
@@ -286,6 +321,10 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 return (inputs,)
 
             RadTTSModule.input_example = input_example
+        else:
+            # NeMo version >= 1.17.0; can just set the relevant flags
+            model.export_config["enable_volume"] = True
+            model.export_config["enable_ragged_batches"] = False
 
     # Patch the model config yaml to add the volume and ragged batch flags
     for art in artifacts:

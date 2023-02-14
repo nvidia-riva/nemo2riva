@@ -12,7 +12,7 @@ from setuptools import setup, find_packages
 install_requirements = [
     "nemo_toolkit>=1.13",
     "nvidia-eff>=0.5.3,<=0.6.2",
-    "onnxruntime-gpu>=1.13.1",
+    "onnxruntime-gpu>=1.13.1,<1.14",
     "onnx_graphsurgeon",
 ]
 
