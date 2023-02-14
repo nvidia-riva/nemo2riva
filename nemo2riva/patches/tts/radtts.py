@@ -170,9 +170,18 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 else:
                     pace = pace[:, :txt_len_pad_removed]
 
-                txt_enc_time_expanded, out_lens = regulate_len(
-                    dur, txt_enc.transpose(1, 2), pace, group_size=self.n_group_size, dur_lens=in_lens,
-                )
+                try:
+                    txt_enc_time_expanded, out_lens = regulate_len(
+                        dur,
+                        txt_enc.transpose(1, 2),
+                        pace,
+                        group_size=self.n_group_size,
+                        dur_lens=in_lens,
+                    )
+                except TypeError as e:
+                    txt_enc_time_expanded, out_lens = regulate_len(
+                        dur, txt_enc.transpose(1, 2), pace
+                    )
                 n_groups = torch.div(out_lens, self.n_group_size, rounding_mode='floor')
                 max_out_len = torch.max(out_lens)
 
@@ -213,13 +222,20 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 (energy_avg, f0) = pad_energy_avg_and_f0(energy_avg, f0, max_out_len)
 
                 if pitch_shift is not None:
-                    pitch_shift_spec_len, _ = regulate_len(
-                        dur,
-                        pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
-                        pace,
-                        group_size=self.n_group_size,
-                        dur_lens=in_lens,
-                    )
+                    try:
+                        pitch_shift_spec_len, _ = regulate_len(
+                            dur,
+                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
+                            pace,
+                            group_size=self.n_group_size,
+                            dur_lens=in_lens,
+                        )
+                    except TypeError as e:
+                        pitch_shift_spec_len, _ = regulate_len(
+                            dur,
+                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
+                            pace,
+                        )
                     f0_bias = pitch_shift_spec_len.squeeze(-1) + f0_bias
 
                 context_w_spkvec = self.preprocess_context(
