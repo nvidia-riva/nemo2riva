@@ -42,7 +42,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 # Define input_types and output_types as required by export()
                 self._input_types = {
                     "text": NeuralType(('B', 'T'), TokenIndex()),
-                    "lens": NeuralType(('B')),
+                    "batch_lengths": NeuralType(('B')),
                     # "batch_lengths": NeuralType(('B'), LengthsType(), optional=True),
                     "speaker_id": NeuralType(('B'), Index()),
                     "speaker_id_text": NeuralType(('B'), Index()),
@@ -280,20 +280,6 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 pitch = torch.randn(sz, device=par.device, dtype=torch.float32) * 0.5
                 pace = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
                 volume = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
-                # batch_lengths = torch.zeros((max_batch + 1), device=par.device, dtype=torch.int32)
-                # left_over_size = sz[0]
-                # batch_lengths[0] = 0
-                # for i in range(1, max_batch):
-                #     length = torch.randint(1, left_over_size - (max_batch - i), (1,), device=par.device)
-                #     batch_lengths[i] = length + batch_lengths[i - 1]
-                #     left_over_size -= length.detach().cpu().numpy()[0]
-                # batch_lengths[-1] = left_over_size + batch_lengths[-2]
-                # sum = 0
-                # index = 1
-                # while index < len(batch_lengths):
-                #     sum += batch_lengths[index] - batch_lengths[index - 1]
-                #     index += 1
-                # assert sum == sz[0], f"sum: {sum}, sz: {sz[0]}, lengths:{batch_lengths}"
 
                 # TODO: Shouldn't hardcode but self.tokenizer isn't initlized yet so unsure how
                 # to get the pad_id
@@ -309,7 +295,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 inputs = {
                     'text': inp,
-                    'lens': lens,
+                    'batch_lengths': lens,
                     # 'batch_lengths': batch_lengths,
                     'speaker_id': speaker,
                     'speaker_id_text': speaker,
@@ -324,11 +310,11 @@ def radtts_model_versioning(model, artifacts, **kwargs):
         else:
             # NeMo version >= 1.17.0; can just set the relevant flags
             model.export_config["enable_volume"] = True
-            model.export_config["enable_ragged_batches"] = False
+            model.export_config["enable_ragged_batches"] = True
 
     # Patch the model config yaml to add the volume and ragged batch flags
     for art in artifacts:
         if art == 'model_config.yaml':
             model_config = yaml.safe_load(artifacts['model_config.yaml']['content'])
-            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': False}
+            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': True }
             artifacts['model_config.yaml']['content'] = yaml.dump(model_config).encode()
