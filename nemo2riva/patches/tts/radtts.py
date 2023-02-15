@@ -42,8 +42,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 # Define input_types and output_types as required by export()
                 self._input_types = {
                     "text": NeuralType(('B', 'T'), TokenIndex()),
-                    "batch_lengths": NeuralType(('B')),
-                    # "batch_lengths": NeuralType(('B'), LengthsType(), optional=True),
+                    "lens": NeuralType(('B')),
                     "speaker_id": NeuralType(('B'), Index()),
                     "speaker_id_text": NeuralType(('B'), Index()),
                     "speaker_id_attributes": NeuralType(('B'), Index()),
@@ -62,7 +61,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
             # Patch module's infer()
             def forward_for_export(
-                # self, text, batch_lengths, speaker_id, speaker_id_text, speaker_id_attributes, pitch, pace, volume
+                # self, text, lens, speaker_id, speaker_id_text, speaker_id_attributes, pitch, pace, volume
                 self,
                 text,
                 lens,
@@ -74,7 +73,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 volume,
             ):
                 # text, pitch, pace, volume = create_batch(
-                #     text, pitch, pace, batch_lengths, padding_idx=self.tokenizer.pad, volume=volume
+                #     text, pitch, pace, lens, padding_idx=self.tokenizer.pad, volume=volume
                 # )
                 (mel, n_frames, dur, _, _) = self.model.infer(
                     speaker_id,
@@ -295,7 +294,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
                 inputs = {
                     'text': inp,
-                    'batch_lengths': lens,
+                    'lens': lens,
                     # 'batch_lengths': batch_lengths,
                     'speaker_id': speaker,
                     'speaker_id_text': speaker,
