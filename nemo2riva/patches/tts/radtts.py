@@ -310,11 +310,13 @@ def radtts_model_versioning(model, artifacts, **kwargs):
         else:
             # NeMo version >= 1.17.0; can just set the relevant flags
             model.export_config["enable_volume"] = True
-            model.export_config["enable_ragged_batches"] = True
+            format=kwargs['import_config'].exports[0].export_format
+            enable_ragged_batch = (format == "ONNX")                
+            model.export_config["enable_ragged_batches"] = enable_ragged_batch
 
     # Patch the model config yaml to add the volume and ragged batch flags
     for art in artifacts:
         if art == 'model_config.yaml':
             model_config = yaml.safe_load(artifacts['model_config.yaml']['content'])
-            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': True }
+            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': enable_ragged_batch }
             artifacts['model_config.yaml']['content'] = yaml.dump(model_config).encode()

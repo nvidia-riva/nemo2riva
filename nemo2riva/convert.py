@@ -73,7 +73,7 @@ def Nemo2Riva(args):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
             # TODO: revisit export_subnet cli arg
-            patch_kwargs = {}
+            patch_kwargs = {"import_config" : cfg}
             if args.export_subnet:
                 patch_kwargs['export_subnet'] = args.export_subnet
             artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key, **patch_kwargs)
