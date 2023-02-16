@@ -51,6 +51,13 @@ def export_model(model, cfg, args, artifacts, metadata):
     runtime = format_meta["runtime"]
     metadata.update({"runtime": runtime})
 
+    if cfg.streaming and hasattr(model, "encoder") and hasattr(model.encoder, "export_cache_support"):
+        model.encoder.export_cache_support = True
+        logging.info("Caching support is enabled.")
+    if cfg.streaming and hasattr(model, "encoder") and hasattr(model.encoder, "export_streaming_support"):
+        model.encoder.export_streaming_support = True
+        logging.info("Streaming export is enabled.")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         export_filename = cfg.export_file
         export_file = os.path.join(tmpdir, export_filename)

@@ -29,6 +29,7 @@ def get_args(argv):
     parser.add_argument("--onnx-opset", type=int, default=14, help="ONNX opset for model export")
     parser.add_argument("--device", default="cuda", help="Device to export for")
     parser.add_argument("--export-subnet", default=None, help="Export specified subnetwork/layer")
+    parser.add_argument("--streaming", action="store_true", help="export cache / streaming support for models that support it")
 
     args = parser.parse_args(argv)
     return args
