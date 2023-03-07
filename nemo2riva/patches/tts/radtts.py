@@ -8,7 +8,7 @@ import yaml
 from nemo.core.neural_types.neural_type import NeuralType
 from packaging.version import Version
 
-from nemo2riva.patches.tts.general import create_batch
+from nemo2riva.patches.tts.general import batch_from_ragged
 
 def radtts_model_versioning(model, artifacts, **kwargs):
     # Riva supports some additional features over NeMo radtts models depending on the version
@@ -22,8 +22,20 @@ def radtts_model_versioning(model, artifacts, **kwargs):
     except NameError:
         # If can't find the nemo version, return without patching
         return None
+
+    # Don't override built-in format
+    # export_format is read from schemas, radtts is still currently torchscript in the schema
+    format_=kwargs['import_config'].exports[0].export_format
+    enable_ragged_batches = (format_ == "ONNX")
+
     if model.__class__.__name__ == 'RadTTSModel':
-        from nemo.collections.tts.helpers.helpers import regulate_len
+        try:
+            # For NeMo < 1.17.0
+            from nemo.collections.tts.helpers.helpers import regulate_len
+        except ModuleNotFoundError as e:
+            # For NeMo >= 1.17.0
+            from nemo.collections.tts.parts.utils.helpers import regulate_len
+
         from nemo.collections.tts.modules.radtts import RadTTSModule, adjust_f0, pad_dur, pad_energy_avg_and_f0
         from nemo.core.neural_types.elements import (
             Index,
@@ -33,39 +45,54 @@ def radtts_model_versioning(model, artifacts, **kwargs):
             TokenDurationType,
             TokenIndex,
         )
-        if nemo_version < Version('1.17.0') and not hasattr(model, "export_config"):
-            # If nemo_version is less than 1.17, we need to add all supports
+        if nemo_version < Version('1.15.0'):
+            # RadTTS came in NeMo 1.11.0 but the export interafce was not stable until 1.15.0
+            # RadTTS will require NeMo >= 1.15.0
+            raise NotImplementedError(
+                "Nemo2riva obtained a RadTTS model, and the installed NeMo version was less than "
+                "1.15.0. Please update to nemo_toolkit['all']>=1.15.0"
+            )
+        elif nemo_version < Version('1.17.0') and not hasattr(model, "export_config"):
+            # We need to support NeMo 1.15, and NeMo 1.16. The patches are slightly different for input_example()
+            # We need to patch the model using 1.17.0's functions
+            using_v15 = (nemo_version < Version('1.16.0'))
+            if using_v15:
+                logging.warning(
+                    "Nemo2riva obtained a RadTTS model and the installed NeMo version was less "
+                    "than 1.16.0. Please consider updating to nemo_toolkit['all']>=1.16.0 as "
+                    "RadTTS has obtained various bugfixes in 1.16.0 and 1.17.0."
+                )
 
             # Patch model's _prepare_for_export()
             def _prepare_for_export(self, **kwargs):
+                self.model.remove_norms()
                 super(model.__class__, model)._prepare_for_export(**kwargs)
+                tensor_shape = ('T') if enable_ragged_batches else ('B', 'T')
                 # Define input_types and output_types as required by export()
                 self._input_types = {
-                    "text": NeuralType(('B', 'T'), TokenIndex()),
-                    "lens": NeuralType(('B')),
-                    # "batch_lengths": NeuralType(('B'), LengthsType(), optional=True),
+                    "text": NeuralType(tensor_shape, TokenIndex()),
+                    "batch_lengths": NeuralType(('B')),
                     "speaker_id": NeuralType(('B'), Index()),
                     "speaker_id_text": NeuralType(('B'), Index()),
                     "speaker_id_attributes": NeuralType(('B'), Index()),
-                    "pitch": NeuralType(('B', 'T'), RegressionValuesType()),
-                    "pace": NeuralType(('B', 'T')),
-                    "volume": NeuralType(('B', 'T'), optional=True),
+                    "pitch": NeuralType(tensor_shape, RegressionValuesType()),
+                    "pace": NeuralType(tensor_shape),
                 }
                 self._output_types = {
                     "spect": NeuralType(('B', 'D', 'T_spec'), MelSpectrogramType()),
                     "num_frames": NeuralType(('B'), TokenDurationType()),
                     "durs_predicted": NeuralType(('B', 'T_text'), TokenDurationType()),
-                    "volume_aligned": NeuralType(('B', 'T_spec'), RegressionValuesType()),
                 }
+                self._input_types["volume"] = NeuralType(tensor_shape, optional=True)
+                self._output_types["volume_aligned"] = NeuralType(('B', 'T_spec'), RegressionValuesType())
 
             model.__class__._prepare_for_export = _prepare_for_export
 
-            # Patch module's infer()
+            # Patch model's forward_for_export()
             def forward_for_export(
-                # self, text, batch_lengths, speaker_id, speaker_id_text, speaker_id_attributes, pitch, pace, volume
                 self,
                 text,
-                lens,
+                batch_lengths,
                 speaker_id,
                 speaker_id_text,
                 speaker_id_attributes,
@@ -73,9 +100,12 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 pace,
                 volume,
             ):
-                # text, pitch, pace, volume = create_batch(
-                #     text, pitch, pace, batch_lengths, padding_idx=self.tokenizer.pad, volume=volume
-                # )
+                if enable_ragged_batches:
+                    text, pitch, pace, volume, lens = batch_from_ragged(
+                        text, pitch, pace, batch_lengths=batch_lengths, padding_idx=self.tokenizer_pad, volume=volume,
+                    )
+                else:
+                    lens = batch_lengths.to(dtype=torch.int64)
                 (mel, n_frames, dur, _, _) = self.model.infer(
                     speaker_id,
                     text,
@@ -107,6 +137,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     )
                 except TypeError as e:
                     # Else, default to NeMo 1.15's function signature
+                    # TODO: This is actually 1.14's signature, maybe we can drop this if clause
                     volume_extended, _ = regulate_len(
                         durs_predicted,
                         volume[:, :truncated_length].unsqueeze(-1),
@@ -117,6 +148,7 @@ def radtts_model_versioning(model, artifacts, **kwargs):
 
             model.__class__.forward_for_export = forward_for_export
 
+            # Patch module's infer()
             def infer(
                 self,
                 speaker_id,
@@ -170,18 +202,14 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 else:
                     pace = pace[:, :txt_len_pad_removed]
 
-                try:
-                    txt_enc_time_expanded, out_lens = regulate_len(
-                        dur,
-                        txt_enc.transpose(1, 2),
-                        pace,
-                        group_size=self.n_group_size,
-                        dur_lens=in_lens,
-                    )
-                except TypeError as e:
-                    txt_enc_time_expanded, out_lens = regulate_len(
-                        dur, txt_enc.transpose(1, 2), pace
-                    )
+                txt_enc_time_expanded, out_lens = regulate_len(
+                    dur,
+                    txt_enc.transpose(1, 2),
+                    pace,
+                    replicate_to_nearest_multiple=True,
+                    group_size=self.n_group_size,
+                    in_lens=in_lens,
+                )
                 n_groups = torch.div(out_lens, self.n_group_size, rounding_mode='floor')
                 max_out_len = torch.max(out_lens)
 
@@ -190,7 +218,11 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     if self.use_vpred_module:
                         # get logits
                         voiced_mask = self.v_pred_module.infer(txt_enc_time_expanded, spk_vec_attributes, lens=out_lens)
-                        voiced_mask_bool = torch.sigmoid(voiced_mask[:, 0]) > 0.5
+                        try:
+                            v_pred_threshold = self.v_pred_threshold
+                        except AttributeError as e:
+                            v_pred_threshold = 0.5
+                        voiced_mask_bool = torch.sigmoid(voiced_mask[:, 0]) > v_pred_threshold
                         voiced_mask = voiced_mask_bool.to(dur.dtype)
                     else:
                         voiced_mask_bool = None
@@ -222,20 +254,14 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 (energy_avg, f0) = pad_energy_avg_and_f0(energy_avg, f0, max_out_len)
 
                 if pitch_shift is not None:
-                    try:
-                        pitch_shift_spec_len, _ = regulate_len(
-                            dur,
-                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
-                            pace,
-                            group_size=self.n_group_size,
-                            dur_lens=in_lens,
-                        )
-                    except TypeError as e:
-                        pitch_shift_spec_len, _ = regulate_len(
-                            dur,
-                            pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
-                            pace,
-                        )
+                    pitch_shift_spec_len, _ = regulate_len(
+                        dur,
+                        pitch_shift[:, :txt_len_pad_removed].unsqueeze(-1),
+                        pace,
+                        replicate_to_nearest_multiple=True,
+                        group_size=self.n_group_size,
+                        in_lens=in_lens,
+                    )
                     f0_bias = pitch_shift_spec_len.squeeze(-1) + f0_bias
 
                 context_w_spkvec = self.preprocess_context(
@@ -267,50 +293,47 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                     mel = self.fold(mel)
 
                 return {'mel': mel, 'out_lens': out_lens, 'dur': dur, 'f0': f0, 'energy_avg': energy_avg}
-
             RadTTSModule.infer = infer
 
-            # Patch module's input_example()
+            # Patch input_example()
             def input_example(self, max_batch=1, max_dim=400):
                 par = next(self.parameters())
-                sz = (max_batch, max_dim)
-                # sz = (max_batch * max_dim,)
+                sz = (max_batch * max_dim,) if enable_ragged_batches else (max_batch, max_dim)
                 inp = torch.randint(32, 94, sz, device=par.device, dtype=torch.int64)
                 speaker = torch.randint(0, 1, (max_batch,), device=par.device, dtype=torch.int64)
                 pitch = torch.randn(sz, device=par.device, dtype=torch.float32) * 0.5
                 pace = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
                 volume = torch.clamp(torch.randn(sz, device=par.device, dtype=torch.float32) * 0.1 + 1, min=0.01)
-                # batch_lengths = torch.zeros((max_batch + 1), device=par.device, dtype=torch.int32)
-                # left_over_size = sz[0]
-                # batch_lengths[0] = 0
-                # for i in range(1, max_batch):
-                #     length = torch.randint(1, left_over_size - (max_batch - i), (1,), device=par.device)
-                #     batch_lengths[i] = length + batch_lengths[i - 1]
-                #     left_over_size -= length.detach().cpu().numpy()[0]
-                # batch_lengths[-1] = left_over_size + batch_lengths[-2]
-                # sum = 0
-                # index = 1
-                # while index < len(batch_lengths):
-                #     sum += batch_lengths[index] - batch_lengths[index - 1]
-                #     index += 1
-                # assert sum == sz[0], f"sum: {sum}, sz: {sz[0]}, lengths:{batch_lengths}"
 
                 # TODO: Shouldn't hardcode but self.tokenizer isn't initlized yet so unsure how
                 # to get the pad_id
                 pad_id = 94
                 inp[inp == pad_id] = pad_id - 1 if pad_id > 0 else pad_id + 1
 
-                lens = []
-                for i, _ in enumerate(inp):
-                    len_i = random.randint(3, max_dim)
-                    lens.append(len_i)
-                    inp[i, len_i:] = pad_id
-                lens = torch.tensor(lens, device=par.device, dtype=torch.int)
+                if enable_ragged_batches:
+                    batch_lengths = torch.zeros((max_batch + 1), device=device, dtype=torch.int32)
+                    left_over_size = sz[0]
+                    batch_lengths[0] = 0
+                    for i in range(1, max_batch):
+                        equal_len = (left_over_size - (max_batch - i)) // (max_batch - i)
+                        length = torch.randint(equal_len // 2, equal_len, (1,), device=device, dtype=torch.int32)
+                        batch_lengths[i] = length + batch_lengths[i - 1]
+                        left_over_size -= length.detach().cpu().numpy()[0]
+                    batch_lengths[-1] = left_over_size + batch_lengths[-2]
+
+                    sum = 0
+                    index = 1
+                    while index < len(batch_lengths):
+                        sum += batch_lengths[index] - batch_lengths[index - 1]
+                        index += 1
+                    assert sum == sz[0], f"sum: {sum}, sz: {sz[0]}, lengths:{batch_lengths}"
+                else:
+                    batch_lengths = torch.randint(max_dim // 2, max_dim, (max_batch,), device=device, dtype=torch.int32)
+                    batch_lengths[0] = max_dim
 
                 inputs = {
                     'text': inp,
-                    'lens': lens,
-                    # 'batch_lengths': batch_lengths,
+                    'batch_lengths': batch_lengths,
                     'speaker_id': speaker,
                     'speaker_id_text': speaker,
                     'speaker_id_attributes': speaker,
@@ -320,15 +343,18 @@ def radtts_model_versioning(model, artifacts, **kwargs):
                 }
                 return (inputs,)
 
-            RadTTSModule.input_example = input_example
+            if using_v15:
+                RadTTSModule.input_example = input_example
+            else:
+                model.__class__.input_example = input_example
         else:
             # NeMo version >= 1.17.0; can just set the relevant flags
             model.export_config["enable_volume"] = True
-            model.export_config["enable_ragged_batches"] = False
+            model.export_config["enable_ragged_batches"] = enable_ragged_batches
 
     # Patch the model config yaml to add the volume and ragged batch flags
     for art in artifacts:
         if art == 'model_config.yaml':
             model_config = yaml.safe_load(artifacts['model_config.yaml']['content'])
-            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': False}
+            model_config["export_config"] = {'enable_volume': True, 'enable_ragged_batches': enable_ragged_batches }
             artifacts['model_config.yaml']['content'] = yaml.dump(model_config).encode()
