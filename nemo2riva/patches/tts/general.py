@@ -47,6 +47,44 @@ def create_batch(
 
     return texts, pitches, paces, volumes
 
+@torch.jit.script
+def batch_from_ragged(
+    text: torch.Tensor,
+    pitch: torch.Tensor,
+    pace: torch.Tensor,
+    batch_lengths: torch.Tensor,
+    padding_idx: int = -1,
+    volume: Optional[torch.Tensor] = None,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """ Same function as create_batch, but updated in NeMo #6020 for 1.17.0
+    """
+
+    batch_lengths = batch_lengths.to(dtype=torch.int64)
+    max_len = torch.max(batch_lengths[1:] - batch_lengths[:-1])
+
+    index = 1
+    num_batches = batch_lengths.shape[0] - 1
+    texts = torch.zeros(num_batches, max_len, dtype=torch.int64, device=text.device) + padding_idx
+    pitches = torch.ones(num_batches, max_len, dtype=torch.float32, device=text.device)
+    paces = torch.zeros(num_batches, max_len, dtype=torch.float32, device=text.device) + 1.0
+    volumes = torch.zeros(num_batches, max_len, dtype=torch.float32, device=text.device) + 1.0
+    lens = torch.zeros(num_batches, dtype=torch.int64, device=text.device)
+    last_index = index - 1
+    while index < batch_lengths.shape[0]:
+        seq_start = batch_lengths[last_index]
+        seq_end = batch_lengths[index]
+        cur_seq_len = seq_end - seq_start
+        lens[last_index] = cur_seq_len
+        texts[last_index, :cur_seq_len] = text[seq_start:seq_end]
+        pitches[last_index, :cur_seq_len] = pitch[seq_start:seq_end]
+        paces[last_index, :cur_seq_len] = pace[seq_start:seq_end]
+        if volume is not None:
+            volumes[last_index, :cur_seq_len] = volume[seq_start:seq_end]
+        last_index = index
+        index += 1
+
+    return texts, pitches, paces, volumes,
+
 
 def generate_vocab_mapping_arpabet(labels):
     mapping = []
