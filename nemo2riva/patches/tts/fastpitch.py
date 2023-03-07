@@ -2,21 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 import nemo
-import torch
 import yaml
-from nemo.collections.tts.helpers.helpers import regulate_len
-from nemo.core.neural_types.elements import (
-    Index,
-    MelSpectrogramType,
-    RegressionValuesType,
-    TokenDurationType,
-    TokenIndex,
-    TokenLogDurationType,
-)
-from nemo.core.neural_types.neural_type import NeuralType
 from packaging.version import Version
-
-from nemo2riva.patches.tts.general import create_batch
 
 def fastpitch_model_versioning(model, artifacts, **kwargs):
     # Riva supports some additional features over NeMo fastpitch models depending on the version

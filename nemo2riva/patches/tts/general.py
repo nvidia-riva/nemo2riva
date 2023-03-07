@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 
@@ -83,7 +83,7 @@ def batch_from_ragged(
         last_index = index
         index += 1
 
-    return texts, pitches, paces, volumes,
+    return texts, pitches, paces, volumes, lens
 
 
 def generate_vocab_mapping_arpabet(labels):
