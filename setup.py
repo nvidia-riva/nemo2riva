@@ -9,12 +9,12 @@ from pathlib import Path
 
 from setuptools import setup, find_packages
 
-install_requirements = [
-    "nemo_toolkit>=1.13",
-    "nvidia-eff>=0.5.3,<=0.6.2",
-    "onnxruntime-gpu>=1.13.1,<1.14",
-    "onnx_graphsurgeon",
-]
+def req_file(filename):
+    with open(Path(filename), encoding='utf-8') as f:
+        content = f.readlines()
+    return [x.strip() for x in content]
+
+install_requirements = req_file("requirements.txt")
 
 __author_email__ = "nvidia-riva@nvidia.com"
 __contact_emails__ = "nvidia-riva@nvidia.com"
