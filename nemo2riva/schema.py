@@ -31,6 +31,7 @@ class ExportConfig:
     encryption: Optional[str] = None
     autocast: bool = False
     max_dim: int = None
+    cache_support: bool = False
 
 
 @dataclass
@@ -89,6 +90,9 @@ def get_export_config(export_obj, args):
         raise Exception(
             "Format `{}` is invalid. Please pick one of the ({})".format(conf.export_format, supported_formats)
         )
+
+    if args.cache_support is not None:
+        conf.cache_support = args.cache_support
 
     return conf
 
