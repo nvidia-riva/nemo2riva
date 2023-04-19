@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 pyarmor<8
-nemo_toolkit>=1.1.0
+nemo_toolkit>=1.6.0
 nvidia-eff>=0.5.3,<=0.6.2
 onnxruntime-gpu>=1.13.1
 onnx_graphsurgeon
