@@ -161,7 +161,8 @@ def save_archive(model, save_path, cfg, artifacts, metadata):
     logging.info("Saving to {}".format(save_path))
     # Create EFF archive.
     Archive.save_registry(
-        save_path=save_path, registry_name="artifacts", registry=artifacts, **metadata,
+        save_path=save_path, registry_name="artifacts", registry=artifacts,
+        tarfile_open_options={'compresslevel': 0, 'copybufsize': 64*1024*1024}, **metadata,
     )
     del artifacts
     gc.collect()
