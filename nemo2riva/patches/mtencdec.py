@@ -4,7 +4,7 @@
 import yaml
 
 
-def change_tokenizer_names(model, artifacts):
+def change_tokenizer_names(model, artifacts, **kwargs):
     if model.__class__.__name__ == 'MTEncDecModel':
 
         conf = yaml.safe_load(artifacts['model_config.yaml']['content'])
