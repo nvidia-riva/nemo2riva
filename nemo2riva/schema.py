@@ -4,7 +4,7 @@
 import os
 import sys
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import torch
 from eff.core import Archive
@@ -31,9 +31,8 @@ class ExportConfig:
     encryption: Optional[str] = None
     autocast: bool = False
     max_dim: int = None
-    cache_support: bool = False
-
-
+    export_args: Optional[Dict[str,str]] = None
+    
 @dataclass
 class ImportConfig:
     """Default config model for the model that exports to ONNX."""
@@ -91,8 +90,14 @@ def get_export_config(export_obj, args):
             "Format `{}` is invalid. Please pick one of the ({})".format(conf.export_format, supported_formats)
         )
 
-    if args.cache_support is not None:
-        conf.cache_support = args.cache_support
+    # TODO: read from schema
+    conf.export_args = {}
+    if args.config:
+        kv = dict(map(lambda s: s.split('='), args.config))
+        conf.export_args.update(kv)
+        
+    if args.cache_support:
+        conf.export_args.update({"cache_support": "True"})
 
     return conf
 
