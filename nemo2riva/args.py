@@ -33,8 +33,17 @@ def get_args(argv):
         "--cache-support",
         type=lambda x: bool(strtobool(x)),
         default=None,
-        help="cache support for models that support it"
+        help="[ deprecated ] cache support for models that support it"
+    )
+    parser.add_argument(
+        "--export-config",
+        metavar="KEY=VALUE",
+        nargs='+',
+        help="Set a number of key-value pairs to model.export_config dictionary "
+        "(do not put spaces before or after the = sign). "
+        "Note that values are always treated as strings.",
     )
 
     args = parser.parse_args(argv)
+        
     return args

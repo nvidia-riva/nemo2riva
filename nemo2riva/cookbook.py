@@ -50,10 +50,13 @@ def export_model(model, cfg, args, artifacts, metadata):
     metadata.update(format_meta)
     runtime = format_meta["runtime"]
     metadata.update({"runtime": runtime})
-
-    if cfg.cache_support and hasattr(model, "encoder") and hasattr(model.encoder, "export_cache_support"):
-        model.encoder.export_cache_support = True
-        logging.info("Caching support is enabled.")
+    
+    if hasattr(model, "set_export_config"):
+        model.set_export_config(cfg.export_args)
+    else:
+        if cfg.export_args.get("cache_support", False) and hasattr(model, "encoder") and hasattr(model.encoder, "export_cache_support"):
+            model.encoder.export_cache_support = True
+            logging.info("Caching support is enabled.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         export_filename = cfg.export_file
@@ -87,7 +90,7 @@ def export_model(model, cfg, args, artifacts, metadata):
                         input_example=input_example,
                         check_trace=args.runtime_check,
                         onnx_opset_version=args.onnx_opset,
-                        verbose=args.verbose,
+                        verbose=bool(args.verbose),
                     )
                     del model
                 if cfg.export_format == 'ONNX':
