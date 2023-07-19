@@ -90,12 +90,16 @@ def get_export_config(export_obj, args):
             "Format `{}` is invalid. Please pick one of the ({})".format(conf.export_format, supported_formats)
         )
 
-    # TODO: read from schema
+    # TODO: read from schema?
     conf.export_args = {}
-    if args.config:
-        kv = dict(map(lambda s: s.split('='), args.config))
-        conf.export_args.update(kv)
-        
+    if args.export_config:
+        for key_value in args.export_config:
+            lst = key_value.split("=")
+            if len(lst) != 2:
+                raise Exception("Use correct format for --export_config: k=v")
+            k, v = lst
+            conf.export_args[k] = v
+
     if args.cache_support:
         conf.export_args.update({"cache_support": "True"})
 

@@ -36,7 +36,7 @@ def get_args(argv):
         help="[ deprecated ] cache support for models that support it"
     )
     parser.add_argument(
-        "--config",
+        "--export-config",
         metavar="KEY=VALUE",
         nargs='+',
         help="Set a number of key-value pairs to model.export_config dictionary "
