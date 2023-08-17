@@ -24,7 +24,6 @@ __license__ = "MIT"
 __package_name__ = "nemo2riva"
 __version__ = "2.13.0"
 
-
 setup(
     description=__description__,
     author=__contact_names__,
@@ -35,8 +34,6 @@ setup(
     packages=find_packages(),
     name=__package_name__,
     python_requires=">=3.7.0",
-    include_package_data=True,
     package_dir={"nemo2riva": "nemo2riva"},
-    package_data={"nemo2riva": ["validation_schemas/*.yaml"]},
     entry_points={"console_scripts": ["nemo2riva = nemo2riva.cli:nemo2riva",]},
 )

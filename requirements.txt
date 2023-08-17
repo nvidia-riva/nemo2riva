@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: MIT
 
-pyarmor<8
 nemo_toolkit>=1.6.0
 nvidia-eff>=0.5.3
 onnxruntime-gpu>=1.13.1
