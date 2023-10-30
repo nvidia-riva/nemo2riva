@@ -36,8 +36,7 @@ def Nemo2Riva(args):
     logging.info("Restoring NeMo model from '{}'".format(nemo_in))
     # Create a PL trainer object which is required for restoring Megatron models
     cfg_trainer = TrainerConfig(
-        accelerator='gpu',
-        strategy="ddp",
+        accelerator='auto',
         num_nodes=1,
         devices=1,
         # Need to set the following two to False as ExpManager will take care of them differently.
