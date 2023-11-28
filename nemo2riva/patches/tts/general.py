@@ -102,7 +102,7 @@ def generate_vocab_mapping_arpabet(labels):
 
 def generate_vocab_mapping_ipa(labels):
     # Only support English IPA dict
-    VALID_NON_ALNUM_IPA_TOKENS = ['ˈ', 'ˌ']
+    VALID_NON_ALNUM_IPA_TOKENS = ['ˈ', 'ˌ', 'ː']
     mapping = []
     for idx, token in enumerate(labels):
         if token in VALID_NON_ALNUM_IPA_TOKENS or (str.isalnum(token) and str.islower(token)):
