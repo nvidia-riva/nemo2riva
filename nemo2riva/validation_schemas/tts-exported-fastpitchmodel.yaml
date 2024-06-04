@@ -10,11 +10,11 @@ metadata:
 artifact_properties:
   # List of files.
   - model_config.yaml
-  - model_graph.onnx:
+  - model_graph.ts:
       # Dictionary of expected properties (name:value) (optional).
-      onnx: True
-      autocast: True
-      encryption: True
+      onnx: False
+      autocast: False
+      encryption: False
 
 # Define list of files with expected content (optional).
 # Functionality limited to yaml files (e.g. model_config.yaml).
