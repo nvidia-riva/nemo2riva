@@ -7,4 +7,4 @@ nvidia-eff-tao-encryption>=0.1.8
 onnx==1.14.1
 onnxruntime==1.16.3
 onnxruntime-gpu==1.16.3
-onnx_graphsurgeon
+onnx_graphsurgeon==0.3.27
