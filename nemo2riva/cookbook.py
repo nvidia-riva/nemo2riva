@@ -46,6 +46,8 @@ def export_model(model, cfg, args, artifacts, metadata):
         }
     elif cfg.export_format == "CKPT":
         format_meta = {"has_pytorch_checkpoint": True, "runtime": "PyTorch"}
+    elif cfg.export_format == "NEMO":
+        format_meta = {"has_pytorch_checkpoint": True, "runtime": "Python"}
     # TODO: use submodel sections
     metadata.update(format_meta)
     runtime = format_meta["runtime"]
@@ -135,6 +137,9 @@ def export_model(model, cfg, args, artifacts, metadata):
         elif cfg.export_format == "CKPT":
             # Save model state using torch save.
             torch.save(model.state_dict(), export_file)
+
+        elif cfg.export_format == "NEMO":
+            model.save_to(export_file)
 
         # Add exported file to the artifact registry
 
