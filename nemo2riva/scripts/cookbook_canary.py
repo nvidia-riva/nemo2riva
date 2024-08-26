@@ -235,7 +235,6 @@ class CanaryModel:
 
         return vocab_path, vocab_file
 
-def canary2riva
 
 @click.command()
 @click.option('--model', type=str, default='nvidia/canary-1b')
