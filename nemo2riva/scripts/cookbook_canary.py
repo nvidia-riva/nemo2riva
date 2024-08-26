@@ -43,7 +43,7 @@ class CanaryModel:
         self.artifacts = ArtifactRegistry(passphrase="tlt_encode")
 
         if model is not None:
-            if self.supports_model(model_name):
+            if self.is_supported(model_name):
                 self.model_name = model_name
                 try:
                     with torch.inference_mode():
@@ -159,6 +159,11 @@ class CanaryModel:
         config_file = "model_config.yaml"
         model_config = OmegaConf.to_container(self.model.cfg)
 
+        if 'beam_search' not in model_config and 'decoding' in model_config:
+            model_config['beam_search'] = model_config['decoding'].get('beam', {'beam_size': 1, 'len_pen': 0.0, 'max_generation_delta': 50}
+)
+
+
         config = dict({k: model_config[k] for k in keys_required})
         config['decoder'] = {
             'transf_decoder': model_config['transf_decoder'],
@@ -230,6 +235,7 @@ class CanaryModel:
 
         return vocab_path, vocab_file
 
+def canary2riva
 
 @click.command()
 @click.option('--model', type=str, default='nvidia/canary-1b')
