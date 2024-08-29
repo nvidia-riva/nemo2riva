@@ -73,7 +73,7 @@ class CanaryModel:
 
         return False
 
-    def export(self, rmir_file, export_encoder, export_decoder, export_vocab, export_config):
+    def export(self, riva_file, export_encoder, export_decoder, export_vocab, export_config):
         with tempfile.TemporaryDirectory() as tempdir:
             # tempdir = '/tmp/temp2'
             if export_encoder:
@@ -142,7 +142,7 @@ class CanaryModel:
                 "min_nemo_version": "1.23",
             }
 
-            Archive.save_registry(save_path=rmir_file, registry_name="artifacts", registry=self.artifacts, **metadata)
+            Archive.save_registry(save_path=riva_file, registry_name="artifacts", registry=self.artifacts, **metadata)
 
     def export_config(self, path):
         keys_required = [
@@ -191,7 +191,7 @@ class CanaryModel:
                 encoder_filename = 'encoder.onnx'
                 export_file = os.path.join(encoder_path, "encoder.onnx")
 
-                self.model.encoder.export(export_file)
+                self.model.encoder.export(export_file, onnx_opset_version=17)
                 o_list = os.listdir(encoder_path)
                 save_as_external_data = len(o_list) > 1
                 if save_as_external_data:
@@ -230,8 +230,38 @@ class CanaryModel:
     def export_vocab(self, path):
         vocab_file = "vocab.json"
         vocab_path = os.path.join(path, vocab_file)
+        tokenizer_vocab={'tokens':{},
+                         'offsets':self.model.tokenizer.token_id_offset
+                         }
+        for lang in self.model.tokenizer.langs:
+            tokenizer_vocab['tokens'][lang] = {}
+        tokenizer_vocab['size']=self.model.tokenizer.vocab_size
+
+        try:
+            tokenizer_vocab['bos_id']=self.model.tokenizer.bos_id
+        except Exception as e:
+            logging.warning(f"Tokenizer is missing bos_id. Could affect accuracy")
+
+        try:
+            tokenizer_vocab['eos_id']=self.model.tokenizer.eos_id
+        except Exception as e:
+            logging.warning(f"Tokenizer is missing eos_id. Could affect accuracy")
+        try:
+            tokenizer_vocab['nospeech_id']=self.model.tokenizer.nospeech_id
+        except Exception as e:
+            logging.warning(f"Tokenizer is missing nospeech_id. Could affect accuracy")
+        try:
+            tokenizer_vocab['pad_id'] = self.model.tokenizer.pad_id
+        except Exception as e:
+            logging.warning(f"Tokenizer is missing pad_id. Could affect accuracy")
+
+
+        for t_id in range(0, self.model.tokenizer.vocab_size):
+            lang = self.model.tokenizer.ids_to_lang([t_id])
+            tokenizer_vocab['tokens'][lang][t_id] = self.model.tokenizer.ids_to_tokens([t_id])[0]
+
         with open(vocab_path, 'w') as ofp:
-            json.dump(self.model.tokenizer.vocab, ofp)
+            json.dump(tokenizer_vocab, ofp)
 
         return vocab_path, vocab_file
 
@@ -244,10 +274,10 @@ class CanaryModel:
 @click.option('--export_decoder', is_flag=True, default=True)
 @click.option('--export_vocab', is_flag=True, default=True)
 @click.option('--export_config', is_flag=True, default=True)
-@click.argument('rmir_file', type=click.Path(dir_okay=False))
-def export(rmir_file, model, model_file, dtype, export_encoder, export_decoder, export_vocab, export_config):
+@click.argument('riva_file', type=click.Path(dir_okay=False))
+def export(riva_file, model, model_file, dtype, export_encoder, export_decoder, export_vocab, export_config):
     CanaryModel(model, model_file, dtype=dtype).export(
-        rmir_file, export_encoder, export_decoder, export_vocab, export_config
+        riva_file, export_encoder, export_decoder, export_vocab, export_config
     )
 
 
