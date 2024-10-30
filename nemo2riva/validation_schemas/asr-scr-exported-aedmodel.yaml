@@ -14,7 +14,13 @@ artifact_properties:
       export_subnet: encoder
       onnx: True
   - decoder.pt:
-      trtllm: True
+      export_subnet: transf_decoder
+      states_only: True
+      torch: True
+      onnx: False
+  - log_softmax.pt:
+      export_subnet: log_softmax
+      states_only: True
       torch: True
       onnx: False
 
