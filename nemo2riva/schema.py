@@ -17,7 +17,7 @@ from packaging.version import Version
 
 schema_dict = None
 
-supported_formats = ["ONNX", "CKPT", "TS", "NEMO", "PYTORCH", "TRT-LLM"]
+supported_formats = ["ONNX", "CKPT", "TS", "NEMO", "PYTORCH", "STATE"]
 
 
 @dataclass
@@ -50,12 +50,13 @@ def get_export_config(export_obj, args):
         conf.export_file = list(export_obj)[0]
         attribs = export_obj[conf.export_file]
         conf.export_subnet = attribs.get('export_subnet', None)
+
         conf.is_onnx=attribs.get('onnx', False)
-        conf.trt_llm = False
-        conf.weights_only = False
+
+
 
         if not conf.is_onnx:
-            conf.trt_llm = attribs.get('trtllm', False)
+            conf.states_only = attribs.get('states_only', False)
             conf.is_torch = attribs.get('torch', False)
 
         if conf.export_file.endswith('.onnx'):
@@ -64,10 +65,11 @@ def get_export_config(export_obj, args):
             conf.export_format = "TS"
         elif conf.export_file.endswith('.nemo'):
             conf.export_format = "NEMO"
-        elif conf.trt_llm:
-            conf.export_format = "TRT-LLM"
-        elif conf.export_file.endswith('.pt'):
-            conf.export_format = "PYTORCH"
+        elif conf.is_torch:
+            if conf.states_only:
+                conf.export_format = "STATE"
+            else:
+                conf.export_format = "PYTORCH"
         else:
             conf.export_format = "CKPT"
         conf.autocast = attribs.get('autocast', False)
