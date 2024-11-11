@@ -1,8 +1,7 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: MIT
 
 import yaml
-import json
 import logging
 
 
@@ -72,7 +71,5 @@ def make_vocabulary_file(model, artifacts, **kwargs):
             lang = model.tokenizer.ids_to_lang([t_id])
             tokenizer_vocab['tokens'][lang][t_id] = model.tokenizer.ids_to_tokens([t_id])[0]
 
-        #artifacts['vocab.json']={}
-        #artifacts['vocab.json']['content'] = json.dumps(tokenizer_vocab).encode('utf-8')
         return tokenizer_vocab
 
