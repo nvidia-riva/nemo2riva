@@ -50,10 +50,7 @@ def get_export_config(export_obj, args):
         conf.export_file = list(export_obj)[0]
         attribs = export_obj[conf.export_file]
         conf.export_subnet = attribs.get('export_subnet', None)
-
         conf.is_onnx=attribs.get('onnx', False)
-
-
 
         if not conf.is_onnx:
             conf.states_only = attribs.get('states_only', False)
@@ -80,8 +77,6 @@ def get_export_config(export_obj, args):
         conf.encryption = attribs.get('encryption', None)
         if conf.encryption and args.key is None:
             raise Exception(f"{conf.export_file} requires encryption and no key was given")
-
-
 
     if args.export_subnet:
         if conf.export_subnet:
