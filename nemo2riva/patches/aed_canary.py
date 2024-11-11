@@ -35,7 +35,6 @@ def config_for_trtllm(model, artifacts, **kwargs):
         }
         config['target'] = 'trtllm.canary'
 
-
         artifacts['model_config.yaml']['content'] = yaml.safe_dump(config, encoding=('utf-8'))
 
 
