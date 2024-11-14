@@ -17,7 +17,7 @@ from packaging.version import Version
 
 schema_dict = None
 
-supported_formats = ["ONNX", "CKPT", "TS", "NEMO"]
+supported_formats = ["ONNX", "CKPT", "TS", "NEMO", "PYTORCH", "STATE"]
 
 
 @dataclass
@@ -48,15 +48,27 @@ def get_export_config(export_obj, args):
     need_autocast = False
     if export_obj:
         conf.export_file = list(export_obj)[0]
+        attribs = export_obj[conf.export_file]
+        conf.export_subnet = attribs.get('export_subnet', None)
+        conf.is_onnx=attribs.get('onnx', False)
+
+        if not conf.is_onnx:
+            conf.states_only = attribs.get('states_only', False)
+            conf.is_torch = attribs.get('torch', False)
+
         if conf.export_file.endswith('.onnx'):
             conf.export_format = "ONNX"
         elif conf.export_file.endswith('.ts'):
             conf.export_format = "TS"
         elif conf.export_file.endswith('.nemo'):
             conf.export_format = "NEMO"
+        elif conf.is_torch:
+            if conf.states_only:
+                conf.export_format = "STATE"
+            else:
+                conf.export_format = "PYTORCH"
         else:
             conf.export_format = "CKPT"
-        attribs = export_obj[conf.export_file]
         conf.autocast = attribs.get('autocast', False)
         need_autocast = conf.autocast
 
@@ -65,8 +77,6 @@ def get_export_config(export_obj, args):
         conf.encryption = attribs.get('encryption', None)
         if conf.encryption and args.key is None:
             raise Exception(f"{conf.export_file} requires encryption and no key was given")
-
-        conf.export_subnet = attribs.get('export_subnet', None)
 
     if args.export_subnet:
         if conf.export_subnet:

@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+# Define required metadata fields expected in the archive (optional).
+metadata:
+  - obj_cls: nemo.collections.asr.models.EncDecMultiTaskModel
+
+
+# Define list of files that are expected (optional).
+artifact_properties:
+  # List of files.
+  - model_config.yaml
+  - encoder.onnx:
+      export_subnet: encoder
+      onnx: True
+  - decoder.pt:
+      export_subnet: transf_decoder
+      states_only: True
+      torch: True
+      onnx: False
+  - log_softmax.pt:
+      export_subnet: log_softmax
+      states_only: True
+      torch: True
+      onnx: False
+
+
+# Define list of files with expected content (optional).
+# Functionality limited to yaml files (e.g. model_config.yaml).
+artifact_content:
+  # List of files.
+  - model_config.yaml:
+    # List of sections.subsections. ... that are required.
+    # (Optional `: True` instructs to check the presence of the file in indicated as leaf in the archive)
+    - transf_decoder
+    - transf_encoder
+    - vocabulary
+    - num_classes
+    - feat_in
+    - n_layers
+    - target
+    - beam_search
+    - encoder
+    - head
+    - model_defaults
+    - prompt_format
+    - sample_rate
+    - target
+    - preprocessor
