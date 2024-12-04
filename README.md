@@ -72,7 +72,7 @@ For additional information and usage, run:
 
         FORMAT
 
-        Force specific export format: `ONNX|TS|CKPT` (default: `None`)
+        Force specific export format: `ONNX|TS|CKPT|NEMO|PYTORCH|STATE` (default: `None`)
 
         --verbose
 
