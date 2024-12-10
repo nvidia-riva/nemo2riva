@@ -145,6 +145,6 @@ For additional information and usage, run:
     <tr>
     <td>Neural Machine Translation</td>
     <td>Megatron</td>
-    <td>nemo2riva <path to .nemo model> </td>
+    <td>nemo2riva &lt;path to .nemo model&gt; </td>
   </tr>
 </table>
