@@ -86,4 +86,3 @@ For additional information and usage, run:
 
         Encryption key or file (default: `None`)
     ```
-
