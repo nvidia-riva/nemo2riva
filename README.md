@@ -98,14 +98,14 @@ For additional information and usage, run:
   <tr>
     <td rowspan="6">Automatic Speech Recognition</td>
     <td>Parakeet-CTC</td>
-    <td rowspan="2">nemo2riva --onnx-opset 18 &lt;path to .nemo model&gt;</td>
+    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 &lt;path to .nemo model&gt;</td>
   </tr>
   <tr>
     <td>Conformer-CTC</td>
   </tr>
   <tr>
     <td>Parakeet-TDT</td>
-    <td rowspan="3">nemo2riva --format nemo &lt;path to .nemo model&gt;</td>
+    <td rowspan="4">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --format nemo &lt;path to .nemo model&gt;</td>
   </tr>
     <tr>
     <td>Parakeet-RNNT</td>
@@ -115,37 +115,38 @@ For additional information and usage, run:
   </tr>
       <tr>
     <td>Canary</td>
-    <td>nemo2riva --format state &lt;path to .nemo model&gt; </td>
+
   </tr>
   <tr><td colspan="3">Note: Extract CTC/RNNT head from Hybrid ASR using <a href="https://github.com/NVIDIA/NeMo/blob/main/examples/asr/asr_hybrid_transducer_ctc/helpers/convert_nemo_asr_hybrid_to_ctc.py"> this</a> script before running nemo2riva</td></tr>
     <tr>
     <td rowspan="3">Text to Speech</td>
     <td>HiFiGAN</td>
-    <td rowspan="3">nemo2riva &lt;path to .nemo model&gt;</td>
-    </tr>
-    <tr>
-    <td>Fastpitch</td>
+    <td rowspan="2">nemo2riva --key tlt_encode --out &lt;path to save .riva model&gt; &lt;path to .nemo model&gt;</td>
     </tr>
     <tr>
     <td>RadTTS</td>
     </tr>
     <tr>
+    <td>Fastpitch</td>
+    <td>nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 14 &lt;path to .nemo model&gt;</td>
+    </tr>
+    <tr>
     <td rowspan="2">Voice Activity Detection</td>
     <td>Segment VAD</td>
-    <td rowspan="2">nemo2riva --onnx-opset 18 &lt;path to .nemo model&gt;</td>
+    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 &lt;path to .nemo model&gt;</td>
     <tr>
     <td>FrameVAD</td>
     </tr>
     <tr>
     <td rowspan="2">Punctuation and Capitalization</td>
     <td>Bert-Base</td>
-    <td rowspan="2">nemo2riva --onnx-opset 18 &lt;path to .nemo model&gt;</td>
+    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 &lt;path to .nemo model&gt;</td>
     <tr>
     <td>Bert-Large</td>
     </tr>
     <tr>
     <td>Neural Machine Translation</td>
     <td>Megatron</td>
-    <td>nemo2riva &lt;path to .nemo model&gt; </td>
+    <td>nemo2riva  --key tlt_encode --max-dim 1024 --out &lt;path to save .riva model&gt; &lt;path to .nemo model&gt; </td>
   </tr>
 </table>
