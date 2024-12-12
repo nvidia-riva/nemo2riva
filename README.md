@@ -117,6 +117,7 @@ For additional information and usage, run:
     <td>Canary</td>
     <td>nemo2riva --format state &lt;path to .nemo model&gt; </td>
   </tr>
+  <tr><td colspan="3">Note: Extract CTC/RNNT head from Hybrid ASR using <a href="https://github.com/NVIDIA/NeMo/blob/main/examples/asr/asr_hybrid_transducer_ctc/helpers/convert_nemo_asr_hybrid_to_ctc.py"> this</a> script before running nemo2riva</td></tr>
     <tr>
     <td rowspan="3">Text to Speech</td>
     <td>HiFiGAN</td>
