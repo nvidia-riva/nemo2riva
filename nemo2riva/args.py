@@ -15,7 +15,7 @@ def get_args(argv):
     parser.add_argument("--validate", action="store_true", help="Validate using schemas")
     parser.add_argument("--runtime-check", action="store_true", help="Runtime check of exported net result")
     parser.add_argument("--schema", default=None, help="Schema file to use for validation")
-    parser.add_argument("--format", default=None, help="Force specific export format: ONNX|TS|CKPT")
+    parser.add_argument("--format", default=None, help="Force specific export format: ONNX|TS|CKPT|NEMO")
     parser.add_argument("--verbose", default=None, help="Verbose level for logging")
     parser.add_argument("--key", default=None, help="Encryption key or file, default is None")
     parser.add_argument(
