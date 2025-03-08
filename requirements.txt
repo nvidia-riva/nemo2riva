@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 nemo_toolkit>=1.6.0
-torch>=2.4.0
+torch>=2.5.0
 nvidia-eff>=0.6.4
 nvidia-eff-tao-encryption>=0.1.8
 nvidia-pyindex==1.0.6
-onnx==1.16.1
-onnxruntime==1.16.3
-onnxruntime-gpu==1.16.3
-onnx-graphsurgeon==0.3.27
+onnx>=1.17.0
+onnxruntime>=1.17.0
+onnxruntime-gpu>=1.17.0
+onnx-graphsurgeon>=0.3.27
