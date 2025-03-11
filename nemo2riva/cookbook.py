@@ -48,6 +48,8 @@ def export_model(model, cfg, args, artifacts, metadata):
         format_meta = {"has_pytorch_checkpoint": True, "runtime": "PyTorch"}
     elif cfg.export_format == "NEMO":
         format_meta = {"has_pytorch_checkpoint": True, "runtime": "Python"}
+    elif cfg.export_format == "STATE":
+        format_meta = {"has_pytorch_checkpoint": False, "runtime": "Python"}
     # TODO: use submodel sections
     metadata.update(format_meta)
     runtime = format_meta["runtime"]
@@ -140,6 +142,15 @@ def export_model(model, cfg, args, artifacts, metadata):
 
         elif cfg.export_format == "NEMO":
             model.save_to(export_file)
+        elif cfg.export_format == "STATE":
+            if not isinstance(model, Exportable):
+                logging.error("Your NeMo model class ({}) is not Exportable.".format(metadata['obj_cls']))
+                sys.exit(1)
+            model.freeze()
+            model_params = model.state_dict()
+            torch.save(model_params, export_file)
+
+
 
         # Add exported file to the artifact registry
 
