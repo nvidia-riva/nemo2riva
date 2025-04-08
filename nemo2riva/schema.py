@@ -17,7 +17,7 @@ from packaging.version import Version
 
 schema_dict = None
 
-supported_formats = ["ONNX", "CKPT", "TS"]
+supported_formats = ["ONNX", "CKPT", "TS", "NEMO"]
 
 
 @dataclass
@@ -52,6 +52,8 @@ def get_export_config(export_obj, args):
             conf.export_format = "ONNX"
         elif conf.export_file.endswith('.ts'):
             conf.export_format = "TS"
+        elif conf.export_file.endswith('.nemo'):
+            conf.export_format = "NEMO"
         else:
             conf.export_format = "CKPT"
         attribs = export_obj[conf.export_file]
@@ -169,7 +171,7 @@ def get_exports(schema_path):
     for schema_section in file_schemas:
         try:
             for k in schema_section.keys():
-                if os.path.splitext(k)[1].lower() in [".onnx", ".ckpt", ".pt", ".ts"]:
+                if os.path.splitext(k)[1].lower() in [".onnx", ".ckpt", ".pt", ".ts", '.nemo']:
                     exports.append(schema_section)
                     break
         except Exception:
