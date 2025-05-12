@@ -23,6 +23,10 @@ artifact_properties:
       states_only: True
       torch: True
       onnx: False
+  - encoder_decoder_proj.pt:
+      export_subnet: encoder_decoder_proj
+      torch: False
+      onnx: False
 
 
 # Define list of files with expected content (optional).
