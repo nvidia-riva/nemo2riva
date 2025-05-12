@@ -13,7 +13,7 @@ from nemo.core import ModelPT
 from nemo.core.config.pytorch_lightning import TrainerConfig
 from nemo.utils import logging
 from omegaconf import OmegaConf
-from pytorch_lightning import Trainer
+from lightning.pytorch import Trainer
 
 from nemo2riva.artifacts import get_artifacts
 from nemo2riva.cookbook import export_model, save_archive
@@ -64,7 +64,7 @@ def Nemo2Riva(args):
     key = None
     if args.key is not None:
         try:
-            with open(args.key, read_mode) as f:
+            with open(args.key, 'r') as f:
                 key = f.read()
         except Exception:
             # literal key
