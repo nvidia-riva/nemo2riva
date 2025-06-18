@@ -151,27 +151,28 @@ def get_subnet(model, subnet):
 
 
 def load_schemas():
-    spec_root = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.abspath(__file__))
     # Get schema path.
-    direc = os.path.join(spec_root, "validation_schemas")
-    ext = '.yaml'
+    schema_dir = os.path.join(root_dir, 'validation_schemas')
 
     global schema_dict
-    schema_dict = {}  # Create an empty dict
+    schema_dict = OmegaConf.load(os.path.join(schema_dir, 'index.yaml'))
+    for key in schema_dict:
+        for format in schema_dict[key]:
+            # None means default export. None can be specified in the index YAML to avoid warning logs.
+            if schema_dict[key][format] is not None:
+                schema_dict[key][format] = os.path.join(schema_dir, schema_dict[key][format])
+            logging.info(f'Indexing validation schema file "{schema_dict[key][format]}" for model "{key}" [{format}]')
 
-    # Select only .yaml files
-    yaml_files = [os.path.join(direc, i) for i in os.listdir(direc) if os.path.splitext(i)[1] == '.yaml']
+def get_schema_path(key, format=None):
+    format = 'default' if format is None else format
+    if key in schema_dict and format in schema_dict[key]:
+        return schema_dict[key][format]
+    return None
 
-    # Iterate over your txt files
-    for f in yaml_files:
-        conf = OmegaConf.load(f)
-        key = ''
-        for meta in conf.metadata:
-            if 'obj_cls' in meta.keys():
-                key = meta['obj_cls']
-        schema_dict[key] = f
-        logging.info(f"Loaded schema file {f} for {key}")
-
+def is_schema_exists(key, format=None):
+    format = 'default' if format is None else format
+    return key in schema_dict and format in schema_dict[key]
 
 def get_exports(schema_path):
     # Load the schema.
@@ -193,32 +194,32 @@ def get_exports(schema_path):
 
 
 def get_import_config(model, args):
-
-    # Explicit schema name passed in args
-    schema = args.schema
-
     if schema_dict is None:
         load_schemas()
 
-    # create config object with default values (ONNX)
-    conf = ImportConfig()
-    key = get_schema_key(model)
-
-    #
-    # Now check if there is a schema defined for target model class
-    #
-    if schema is None and key in schema_dict:
-        schema = schema_dict[key]
-        logging.info("Found validation schema for {} at {}".format(key, schema))
+    if args.schema is not None:
+        # Explicit schema name passed in args
+        schema = args.schema
+    else:
+        key = get_schema_key(model)
+        format = args.format if args.format is not None else 'default'
+        if is_schema_exists(key, format=format):
+            schema = get_schema_path(key, format=format)
+            logging.info(f'Using validation schema "{schema}" for "{key}" [{format}]')
+        else:
+            logging.warning(
+                f'Validation schema not found for "{key}" [{format}]\n'
+                + 'Riva does not guarantee support for this network and likely will not work with it.'
+            )
+            schema = None
 
     if schema is None:
-        logging.warning(
-            "Validation schema not found for {}.\n".format(key)
-            + "That means Riva does not yet support a pipeline for this network and likely will not work with it."
-        )
         exports = [None]
     else:
         exports = get_exports(schema)
+
+    # create config object with default values (ONNX)
+    conf = ImportConfig()
 
     conf.exports = [get_export_config(export_obj, args) for export_obj in exports]
 

@@ -1,0 +1,56 @@
+# Specify the conversion schema for each Nemo model class
+nemo.collections.asr.models.EncDecMultiTaskModel:
+  default: asr-scr-exported-aedmodel.yaml
+  nemo: null # Default export
+
+nemo.collections.asr.models.classification_models.EncDecClassificationModel:
+  default: asr-scr-exported-encdecclsmodel.yaml
+  onnx: asr-scr-exported-encdecclsmodel.yaml
+
+nemo.collections.asr.models.EncDecCTCModel:
+  default: asr-stt-exported-encdecctcmodel.yaml
+  onnx: asr-stt-exported-encdecctcmodel.yaml
+
+nemo.collections.asr.models.EncDecCTCModelBPE:
+  default: asr-stt-exported-encdectcmodelbpe.yaml
+  onnx: asr-stt-exported-encdectcmodelbpe.yaml
+
+nemo.collections.nlp.models.IntentSlotClassificationModel:
+  default: nlp-isc-exported-bert.yaml
+  onnx: nlp-isc-exported-bert.yaml
+
+nemo.collections.nlp.models.MTEncDecModel:
+  default: nlp-mt-exported-encdecmtmodel.yaml
+  onnx: nlp-mt-exported-encdecmtmodel.yaml
+
+nemo.collections.nlp.models.MegatronNMTModel:
+  default: nlp-mt-exported-megatronnmtmodel.yaml
+  onnx: nlp-mt-exported-megatronnmtmodel.yaml
+
+nemo.collections.nlp.models.PunctuationCapitalizationModel:
+  default: nlp-pc-exported-bert.yaml
+  onnx: nlp-pc-exported-bert.yaml
+
+nemo.collections.nlp.models.QAModel:
+  default: nlp-qa-exported-bert.yaml
+  onnx: nlp-qa-exported-bert.yaml
+
+nemo.collections.nlp.models.TextClassificationModel:
+  default: nlp-tc-exported-bert.yaml
+  onnx: nlp-tc-exported-bert.yaml
+
+nemo.collections.nlp.models.TokenClassificationModel:
+  default: nlp-tkc-exported-bert.yaml
+  onnx: nlp-tkc-exported-bert.yaml
+
+nemo.collections.tts.models.FastPitchModel:
+  default: tts-exported-fastpitchmodel.yaml
+  onnx: tts-exported-fastpitchmodel.yaml
+
+nemo.collections.tts.models.HifiGanModel:
+  default: tts-exported-hifiganmodel.yaml
+  onnx: tts-exported-hifiganmodel.yaml
+
+nemo.collections.tts.models.RadTTSModel:
+  default: tts-exported-radttsmodel.yaml
+  onnx: tts-exported-radttsmodel.yaml

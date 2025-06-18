@@ -80,7 +80,9 @@ def Nemo2Riva(args):
             patch_kwargs = {"import_config" : cfg}
             if args.export_subnet:
                 patch_kwargs['export_subnet'] = args.export_subnet
-            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key, **patch_kwargs)
+            artifacts, manifest = get_artifacts(
+                restore_path=nemo_in, model=model, passphrase=key, format=args.format, **patch_kwargs
+            )
 
             for export_cfg in cfg.exports:
                 subnet = get_subnet(model, export_cfg.export_subnet)

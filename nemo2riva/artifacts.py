@@ -93,14 +93,16 @@ def create_artifact(reg, key, do_encrypt, **af_dict):
     return af
 
 
-def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs):
+def get_artifacts(restore_path: str, model=None, passphrase=None, format=None, **patch_kwargs):
     artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
 
     # NOTE: when servicemaker calls into get_artifacts, model is always None so this code section
     # is never run.
     # check if this model has one or more patches to apply, if yes go ahead and run it
     if model is not None and _HAVE_PATCHES and model.__class__.__name__ in patches:
-        for patch in patches[model.__class__.__name__]:
+        # Apply patches for the given format.
+        format = format if format is not None else 'default'
+        for patch in patches[model.__class__.__name__].get(format, []):
             patch(model, artifacts, **patch_kwargs)
     elif model is not None and not _HAVE_PATCHES:
         logging.error(
