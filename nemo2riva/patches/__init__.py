@@ -30,6 +30,6 @@ patches = {
     },
     'RadTTSModel': {
         'default': [generate_vocab_mapping, radtts_model_versioning],
-        'onnx': [generate_vocab_mapping, radtts_model_versioning],
+        'ts': [generate_vocab_mapping, radtts_model_versioning],
     },
 }

@@ -46,7 +46,7 @@ class ImportConfig:
 def get_export_config(export_obj, args):
     conf = ExportConfig()
     need_autocast = False
-    if export_obj:
+    if export_obj is not None:
         conf.export_file = list(export_obj)[0]
         attribs = export_obj[conf.export_file]
         conf.export_subnet = attribs.get('export_subnet', None)
@@ -93,7 +93,8 @@ def get_export_config(export_obj, args):
         conf.max_dim = args.max_dim
 
     # Optional export format override
-    if args.format is not None:
+    if args.format != 'default' and export_obj is None:
+        # When export_obj is None, the root of the network is exported and the format needs to be overridden.
         conf.export_format = args.format.upper()
         conf.export_file = os.path.splitext(conf.export_file)[0] + "." + conf.export_format.lower()
 
@@ -202,7 +203,7 @@ def get_import_config(model, args):
         schema = args.schema
     else:
         key = get_schema_key(model)
-        format = args.format if args.format is not None else 'default'
+        format = args.format
         if is_schema_exists(key, format=format):
             schema = get_schema_path(key, format=format)
             logging.info(f'Using validation schema "{schema}" for "{key}" [{format}]')

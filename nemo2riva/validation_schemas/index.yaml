@@ -53,4 +53,4 @@ nemo.collections.tts.models.HifiGanModel:
 
 nemo.collections.tts.models.RadTTSModel:
   default: tts-exported-radttsmodel.yaml
-  onnx: tts-exported-radttsmodel.yaml
+  ts: tts-exported-radttsmodel.yaml
