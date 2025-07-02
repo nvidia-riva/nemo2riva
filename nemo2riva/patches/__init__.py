@@ -5,6 +5,7 @@ from nemo2riva.patches.ctc import set_decoder_num_classes
 from nemo2riva.patches.ctc_bpe import bpe_check_inputs_and_version
 from nemo2riva.patches.mtencdec import change_tokenizer_names
 from nemo2riva.patches.tts import fastpitch_model_versioning, generate_vocab_mapping, radtts_model_versioning
+from nemo2riva.patches.frame_vad import patch_output_name
 
 patches = {
     "EncDecCTCModel": [set_decoder_num_classes],
@@ -12,4 +13,5 @@ patches = {
     "MTEncDecModel": [change_tokenizer_names],
     "FastPitchModel": [generate_vocab_mapping, fastpitch_model_versioning],
     "RadTTSModel": [generate_vocab_mapping, radtts_model_versioning],
+    "EncDecFrameClassificationModel": [patch_output_name],
 }
