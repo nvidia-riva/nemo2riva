@@ -98,7 +98,7 @@ For additional information and usage, run:
   <tr>
     <td rowspan="6">Automatic Speech Recognition</td>
     <td>Parakeet-CTC</td>
-    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 &lt;path to .nemo model&gt;</td>
+    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 --max-dim 1000 &lt;path to .nemo model&gt;</td>
   </tr>
   <tr>
     <td>Conformer-CTC</td>
