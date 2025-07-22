@@ -5,7 +5,7 @@ nemo_toolkit>=1.6.0
 nvidia-eff>=0.6.4
 nvidia-eff-tao-encryption>=0.1.8
 nvidia-pyindex==1.0.6
-onnx==1.14.1
-onnxruntime==1.16.3
-onnxruntime-gpu==1.16.3
+onnx==1.18.0
+onnxruntime==1.19.0
+onnxruntime-gpu==1.19.0
 onnx-graphsurgeon==0.3.27
