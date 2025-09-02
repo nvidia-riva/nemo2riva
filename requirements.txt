@@ -6,6 +6,6 @@ nvidia-eff>=0.6.4
 nvidia-eff-tao-encryption>=0.1.8
 nvidia-pyindex==1.0.6
 onnx==1.18.0
-onnxruntime==1.19.0
-onnxruntime-gpu==1.19.0
-onnx-graphsurgeon==0.3.27
+onnxruntime==1.21.0
+onnxruntime-gpu==1.21.0
+onnx-graphsurgeon==0.5.8
