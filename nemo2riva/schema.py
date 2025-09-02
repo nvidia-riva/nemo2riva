@@ -209,6 +209,10 @@ def get_import_config(model, args):
         exports = [None]
     else:
         exports = get_exports(schema)
+        if key == "nemo.collections.tts.models.MagpieTTSModel" and args.submodel == "encoder":
+            exports = [
+                {'model_graph.onnx': {'onnx': True, 'autocast': True, 'encryption': True}},
+            ]
 
     conf.exports = [get_export_config(export_obj, args) for export_obj in exports]
 

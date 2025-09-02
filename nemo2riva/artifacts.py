@@ -77,6 +77,36 @@ def retrieve_artifacts_as_dict(restore_path: str, obj: Optional["ModelPT"] = Non
                 logging.error(f"Could not retrieve the artifact {file_key} at {member.name}. Error occured:\n{tb}")
     return artifacts
 
+def retrieve_artifacts_as_dict_from_ckpt(ckpt: dict, model_cfg: dict, obj: Optional["ModelPT"] = None):
+    """ Retrieves all NeMo artifacts and returns them as dict
+        Args:
+            ckpt: dict containing the checkpoint
+            model_cfg: dict containing the model config
+            obj: ModelPT object (Optional, DEFAULT: None)
+    """
+    artifacts = {}
+    ## ckpt
+    #f = open(ckpt, "rb")
+    #artifact_content = f.read()
+    #aname = "model.ckpt"
+    #artifacts[aname] = {
+    #    "conf_path": aname,
+    #    "path_type": "TAR_PATH",
+    #    "content": artifact_content,
+    #}
+    #f.close()
+
+    f = open(model_cfg, "rb")
+    artifact_content = f.read()
+    aname = "model_config.yaml"
+    artifacts[aname] = {
+        "conf_path": aname,
+        "path_type": "TAR_PATH",
+        "content": artifact_content,
+    }
+    f.close()
+    return artifacts
+
 
 def create_artifact(reg, key, do_encrypt, **af_dict):
     # only works for plain content now - no encryption in Nemo
@@ -93,8 +123,11 @@ def create_artifact(reg, key, do_encrypt, **af_dict):
     return af
 
 
-def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs):
-    artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
+def get_artifacts(restore_path: str, model=None, passphrase=None, model_cfg=None, from_ckpt=False, **patch_kwargs):
+    if not from_ckpt:
+        artifacts = retrieve_artifacts_as_dict(obj=model, restore_path=restore_path)
+    else:
+        artifacts = retrieve_artifacts_as_dict_from_ckpt(ckpt=restore_path, model_cfg=model_cfg, obj=model)
 
     # NOTE: when servicemaker calls into get_artifacts, model is always None so this code section
     # is never run.
@@ -119,7 +152,7 @@ def get_artifacts(restore_path: str, model=None, passphrase=None, **patch_kwargs
         nemo_manifest = {'files': artifacts, 'metadata': {'format_version': 1}}
         if 'model_config.yaml' in artifacts.keys():
             nemo_manifest['has_nemo_config'] = True
-
+            
     nemo_files = nemo_manifest['files']
     nemo_metadata = nemo_manifest['metadata']
     reg = ArtifactRegistry(passphrase=passphrase)
