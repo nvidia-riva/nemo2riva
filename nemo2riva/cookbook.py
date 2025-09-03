@@ -88,22 +88,25 @@ def export_model(model, cfg, args, artifacts, metadata):
 
                     if model.__class__.__name__ == "MagpieTTSModel" and cfg.export_format == "ONNX":
                         from nemo2riva.patches.tts.magpietts import EncoderOnnxModel
-                        encoder_model = EncoderOnnxModel(model)
-                        input_args, dynamic_axes, output_names, input_names = encoder_model._prepare_for_export()
-                        
-                        torch.onnx.export(encoder_model,
-                              input_args,
-                              export_file,
-                              input_names=input_names,
-                              output_names=output_names,
-                              dynamic_axes=dynamic_axes,
-                              opset_version=17)
-                        
-                        enc_gs = gs.import_onnx(onnx.load(export_file))
-                        outputs = enc_gs.outputs
-                        fix_outputs = [outputs[0]]
-                        enc_gs.outputs = fix_outputs
-                        onnx.save(gs.export_onnx(enc_gs), export_file)
+                        with torch.no_grad():
+                            model.eval()
+                            model = model.half()
+                            encoder_model = EncoderOnnxModel(model)
+                            input_args, dynamic_axes, output_names, input_names = encoder_model._prepare_for_export()
+                            
+                            torch.onnx.export(encoder_model,
+                                input_args,
+                                export_file,
+                                input_names=input_names,
+                                output_names=output_names,
+                                dynamic_axes=dynamic_axes,
+                                opset_version=17)
+                            
+                            enc_gs = gs.import_onnx(onnx.load(export_file))
+                            outputs = enc_gs.outputs
+                            fix_outputs = [outputs[0]]
+                            enc_gs.outputs = fix_outputs
+                            onnx.save(gs.export_onnx(enc_gs), export_file)
                         del model, encoder_model
                     else:
                         input_example = model.input_module.input_example(**in_args)

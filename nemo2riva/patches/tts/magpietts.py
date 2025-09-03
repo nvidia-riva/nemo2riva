@@ -66,7 +66,7 @@ def update_config(model_cfg, codecmodel_path, legacy_codebooks=False):
 class EncoderOnnxModel(torch.nn.Module):
     def __init__(self, model, tokenizer_name="english_phoneme"):
         super().__init__()
-        self.model = model
+        model = model.eval().half()
         self.tokenizer_name=tokenizer_name
         self.tokenizer=model.tokenizer
         self.bos_id=model.bos_id
@@ -89,7 +89,8 @@ class EncoderOnnxModel(torch.nn.Module):
         text_lens = torch.IntTensor([text_encoding.shape[1] for _ in range(n_batches)]).cuda()
         max_text_len = torch.max(text_lens).item()
         text_mask = get_mask_from_lengths(text_lens).cuda()  # (B, T)
-
+        
+        dummy_output = self(text_encoding, text_mask)
 
         input_names = ["tokens", "token_mask"]
         output_names = ["output"]

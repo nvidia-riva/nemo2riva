@@ -72,6 +72,9 @@ def Nemo2Riva(args):
                         
                         model = MagpieTTSModel(cfg=model_cfg)
                         model.load_state_dict(state_dict)
+                        model.cuda()
+                        model.eval()
+                        model = model.half()
                     else:
                         model = ModelPT(cfg=model_cfg)
                         model.load_state_dict(ckpt)
