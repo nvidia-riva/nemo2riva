@@ -15,7 +15,7 @@ Models trained in [NVIDIA NeMo](https://github.com/NVIDIA/NeMo) have the format 
     ```bash
 
     pip3 install nvidia-pyindex
-    pip3 install nemo2riva
+    pip3 install --extra-index-url https://pypi.nvidia.com  nemo2riva
     nemo2riva --out /NeMo/<MODEL_NAME>.riva /NeMo/<MODEL_NAME>.nemo
     ```
 
@@ -98,7 +98,7 @@ For additional information and usage, run:
   <tr>
     <td rowspan="6">Automatic Speech Recognition</td>
     <td>Parakeet-CTC</td>
-    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 --max-dim 1000 &lt;path to .nemo model&gt;</td>
+    <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 19 --max-dim 1000 &lt;path to .nemo model&gt;</td>
   </tr>
   <tr>
     <td>Conformer-CTC</td>
