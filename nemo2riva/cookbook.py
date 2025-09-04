@@ -64,9 +64,9 @@ def export_model(model, cfg, args, artifacts, metadata):
         export_filename = cfg.export_file
         export_file = os.path.join(tmpdir, export_filename)
 
-        if cfg.export_format in ["ONNX", "TS"]:
+        if cfg.export_format in ["ONNX", "TS"] and (model.__class__.__name__ == "MagpieTTSModel" and args.submodel == "encoder"):
             # Export the model, get the descriptions.
-            if not isinstance(model, Exportable):
+            if not isinstance(model, Exportable) and not model.__class__.__name__ == "MagpieTTSModel":
                 logging.error("Your NeMo model class ({}) is not Exportable.".format(metadata['obj_cls']))
                 sys.exit(1)
 
@@ -86,15 +86,38 @@ def export_model(model, cfg, args, artifacts, metadata):
                     if cfg.max_dim is not None:
                         in_args["max_dim"] = cfg.max_dim
 
-                    input_example = model.input_module.input_example(**in_args)
-                    _, descriptions = model.export(
-                        export_file,
-                        input_example=input_example,
-                        check_trace=args.runtime_check,
-                        onnx_opset_version=args.onnx_opset,
-                        verbose=bool(args.verbose),
-                    )
-                    del model
+                    if model.__class__.__name__ == "MagpieTTSModel" and cfg.export_format == "ONNX":
+                        from nemo2riva.patches.tts.magpietts import EncoderOnnxModel
+                        with torch.no_grad():
+                            model.eval()
+                            model = model.half()
+                            encoder_model = EncoderOnnxModel(model)
+                            input_args, dynamic_axes, output_names, input_names = encoder_model._prepare_for_export()
+                            
+                            torch.onnx.export(encoder_model,
+                                input_args,
+                                export_file,
+                                input_names=input_names,
+                                output_names=output_names,
+                                dynamic_axes=dynamic_axes,
+                                opset_version=17)
+                            
+                            enc_gs = gs.import_onnx(onnx.load(export_file))
+                            outputs = enc_gs.outputs
+                            fix_outputs = [outputs[0]]
+                            enc_gs.outputs = fix_outputs
+                            onnx.save(gs.export_onnx(enc_gs), export_file)
+                        del model, encoder_model
+                    else:
+                        input_example = model.input_module.input_example(**in_args)
+                        _, descriptions = model.export(
+                            export_file,
+                            input_example=input_example,
+                            check_trace=args.runtime_check,
+                            onnx_opset_version=args.onnx_opset,
+                            verbose=bool(args.verbose),
+                        )
+                        del model
                 if cfg.export_format == 'ONNX':
                     o_list = os.listdir(tmpdir)
                     save_as_external_data = len(o_list) > 1

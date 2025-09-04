@@ -12,12 +12,14 @@ import torch
 from nemo.core import ModelPT
 from nemo.core.config.pytorch_lightning import TrainerConfig
 from nemo.utils import logging
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, open_dict
 from lightning.pytorch import Trainer
+
 
 from nemo2riva.artifacts import get_artifacts
 from nemo2riva.cookbook import export_model, save_archive
 from nemo2riva.schema import get_import_config, get_subnet, validate_archive
+
 
 
 def Nemo2Riva(args):
@@ -48,8 +50,37 @@ def Nemo2Riva(args):
 
     try:
         with torch.inference_mode():
-            # Restore instance from .nemo file using generic model restore_from
-            model = ModelPT.restore_from(restore_path=nemo_in, trainer=trainer)
+            if args.load_ckpt:
+                if not args.model_config:
+                    raise ValueError("Hparams file is required when loading from checkpoint")
+                model_cfg = OmegaConf.load(args.model_config)
+                ckpt = torch.load(nemo_in, weights_only=False)
+                if "state_dict" in ckpt.keys():
+                    ckpt = ckpt["state_dict"]
+
+                if "cfg" in model_cfg:
+                    model_cfg = model_cfg.cfg
+                with open_dict(model_cfg):
+                    if model_cfg.target.split(".")[-1] == "MagpieTTSModel":
+                        from nemo2riva.patches.tts.magpietts import update_config, update_ckpt
+                        from nemo.collections.tts.models.magpietts import MagpieTTSModel
+                        legacy_codebooks = False
+                        if not args.audio_codecpath:
+                            raise ValueError("Audio codec path is required when loading from checkpoint for MagpieTTSModel.")
+                        model_cfg = update_config(model_cfg, args.audio_codecpath, legacy_codebooks)
+                        state_dict = update_ckpt(ckpt)
+                        
+                        model = MagpieTTSModel(cfg=model_cfg)
+                        model.load_state_dict(state_dict)
+                        model.cuda()
+                        model.eval()
+                        model = model.half()
+                    else:
+                        model = ModelPT(cfg=model_cfg)
+                        model.load_state_dict(ckpt)
+            else:
+                    # Restore instance from .nemo file using generic model restore_from
+                    model = ModelPT.restore_from(restore_path=nemo_in, trainer=trainer)
     except Exception as e:
         logging.error(
             "Failed to restore model from NeMo file : {}. Please make sure you have the latest NeMo package installed with [all] dependencies.".format(
@@ -78,9 +109,11 @@ def Nemo2Riva(args):
             warnings.filterwarnings('ignore', category=UserWarning)
             # TODO: revisit export_subnet cli arg
             patch_kwargs = {"import_config" : cfg}
+            if model.__class__.__name__ == "MagpieTTSModel":
+                patch_kwargs['is_encoder'] = args.submodel == "encoder"
             if args.export_subnet:
                 patch_kwargs['export_subnet'] = args.export_subnet
-            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key, **patch_kwargs)
+            artifacts, manifest = get_artifacts(restore_path=nemo_in, model=model, passphrase=key, model_cfg=args.model_config, from_ckpt=args.load_ckpt, **patch_kwargs)
 
             for export_cfg in cfg.exports:
                 subnet = get_subnet(model, export_cfg.export_subnet)
