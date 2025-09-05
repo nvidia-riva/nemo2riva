@@ -131,6 +131,14 @@ For additional information and usage, run:
     <td>nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 14 &lt;path to .nemo model&gt;</td>
     </tr>
     <tr>
+    <td>MagpieTTS Decoder</td>
+    <td>nemo2riva &lt;model.ckpt path$gt; --load_ckpt --model_config &lt;hparams_file$gt; --audio_codecpath &lt;codec .nemo ckpt&gt; --key tlt_encode --out magpie_decoder.riva --submodel decoder</td>
+    </tr>
+    <tr>
+    <td>MagpieTTS Encoder</td>
+    <td>nemo2riva &lt;model.ckpt path&gt; --load_ckpt --model_config &lt;hparams_file&gt; --audio_codecpath &lt;codec .nemo ckpt&gt; --key tlt_encode --out magpie_encoder.riva --submodel encoder</td>
+    </tr>
+    <tr>
     <td rowspan="2">Voice Activity Detection</td>
     <td>Segment VAD</td>
     <td rowspan="2">nemo2riva  --key tlt_encode --out &lt;path to save .riva model&gt; --onnx-opset 18 &lt;path to .nemo model&gt;</td>
