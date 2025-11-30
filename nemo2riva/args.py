@@ -10,8 +10,12 @@ def get_args(argv):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description=f"Convert NeMo models to Riva EFF input format",
     )
-    parser.add_argument("source", help="Source .nemo file")
+    parser.add_argument("source", help="Source .nemo or ckpt file")
     parser.add_argument("--out", default=None, help="Location to write resulting Riva EFF input to")
+    parser.add_argument("--load_ckpt", action="store_true", help="Load using checkpoint instead of .nemo file")
+    parser.add_argument("--submodel", default="decoder", help="Submodel to export. Default is decoder for MagpieTTSModel.")
+    parser.add_argument("--model_config", default=None, help="Hparams file")
+    parser.add_argument("--audio_codecpath", default=None, help="Audiocodec path. Needed only for magpietts models.")
     parser.add_argument("--validate", action="store_true", help="Validate using schemas")
     parser.add_argument("--runtime-check", action="store_true", help="Runtime check of exported net result")
     parser.add_argument("--schema", default=None, help="Schema file to use for validation")
